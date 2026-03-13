@@ -17,7 +17,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 })
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE = 'https://satvictaste.onrender.com'
 
 // Red marker for verified restaurants
 const verifiedMarkerIcon = L.divIcon({
