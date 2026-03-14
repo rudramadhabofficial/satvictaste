@@ -211,21 +211,31 @@ function deliveryPartnerAuth(req, res, next) {
   }
 }
 
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
+
 async function maybeSendEmail(to, subject, text) {
   try {
-    if (!process.env.SMTP_HOST) {
+    if (!process.env.ZOHO_CLIENT_ID) {
       console.log('[NOTIFICATION] to:', to, '| subject:', subject, '| text:', text);
       return;
     }
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: false,
-      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+      host: 'smtp.zoho.com',
+      port: 465,
+      secure: true,
+      auth: {
+        type: 'OAuth2',
+        user: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
+        clientId: process.env.ZOHO_CLIENT_ID,
+        clientSecret: process.env.ZOHO_CLIENT_SECRET,
+        refreshToken: process.env.ZOHO_REFRESH_TOKEN,
+      },
     });
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'no-reply@satvic.local',
-      to, subject, text,
+      from: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
+      to,
+      subject,
+      text,
     });
   } catch (e) {
     console.warn('Email send failed:', e.message);

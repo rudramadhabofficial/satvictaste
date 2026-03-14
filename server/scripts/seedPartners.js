@@ -1,6 +1,6 @@
 /* Seed 5 demo partner submissions */
 (async () => {
-  const base = process.env.API_URL || 'http://localhost:4000';
+  const base = process.env.API_URL || 'https://satvictaste.onrender.com';
   const email = process.env.DEMO_PARTNER_EMAIL || 'demo.partner@satvic.local';
   const password = process.env.DEMO_PARTNER_PASSWORD || 'Demo123!';
   const headers = { 'Content-Type': 'application/json' };

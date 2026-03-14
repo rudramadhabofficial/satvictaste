@@ -23,4 +23,16 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: ZOHO_CLIENT_ID
+        sync: false
+      - key: ZOHO_CLIENT_SECRET
+        sync: false
+      - key: ZOHO_REFRESH_TOKEN
+        sync: false
+      - key: ZOHO_ACCOUNT_ID
+        sync: false
+      - key: ZOHO_MAIL_FROM
+        value: noreply@satvictaste.com
+      - key: SUPPORT_EMAIL
+        value: support@satvictaste.com
 
