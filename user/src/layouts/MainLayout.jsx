@@ -29,7 +29,7 @@ export function Header({ cartCount, onCartClick }) {
       <div className="header-inner">
         <Link to="/" className="header-brand">
           <img src="/logo.png" alt="Satvic" className="header-logo" />
-          <span className="header-title">Satvic</span>
+          <span className="header-title">SatvicTaste</span>
         </Link>
         <nav className="nav">
           <Link to="/map">Map</Link>
@@ -65,7 +65,7 @@ export function Footer() {
       <div className="footer-inner">
         <div className="footer-brand">
           <img src="/logo.png" alt="Satvic" className="footer-logo" />
-          <span className="footer-brand-name">Satvic</span>
+          <span className="footer-brand-name">SatvicTaste</span>
           <p className="footer-tagline">Verified Satvik, Jain &amp; spiritual food. Calm discovery, no distractions.</p>
         </div>
         <div className="footer-nav">

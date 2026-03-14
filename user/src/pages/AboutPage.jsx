@@ -3,9 +3,9 @@ export default function AboutPage() {
     <section className="section">
       <div className="container-tight about-layout">
         <div className="about-text">
-          <h1 className="section-title">About Satvic</h1>
+          <h1 className="section-title">About SatvicTaste</h1>
           <p className="about-lead" style={{ fontSize: '1.25rem', color: 'var(--muted)', marginTop: '24px', lineHeight: '1.6' }}>
-            Satvic is built to help people discover calm, clean and spiritually-aligned food places — without noise,
+            SatvicTaste is built to help people discover calm, clean and spiritually-aligned food places — without noise,
             ads or endless scrolling. The focus is on trust, simplicity and verified satvik, Jain-friendly options.
           </p>
           <p className="about-body" style={{ marginTop: '32px', lineHeight: '1.8' }}>
