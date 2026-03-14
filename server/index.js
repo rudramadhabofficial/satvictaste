@@ -272,14 +272,27 @@ app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, name, password } = req.body || {};
     if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
-    if (inMemoryUsers.find((u) => u.email.toLowerCase() === String(email).toLowerCase())) {
+    
+    // Check if already registered and verified
+    const existingUser = inMemoryUsers.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+    if (existingUser && existingUser.verified) {
       return res.status(400).json({ error: 'Email already registered' });
     }
-    const id = String(Date.now());
-    const user = { id, email, name, passwordHash: hashPassword(password), verified: false };
-    inMemoryUsers.push(user);
+
+    // Generate 4-digit token
     const token = String(Math.floor(1000 + Math.random() * 9000));
-    inMemoryVerifications.push({ email, token, createdAt: new Date() });
+    
+    // Upsert into verification (includes user data)
+    const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === String(email).toLowerCase());
+    if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+    
+    inMemoryVerifications.push({ 
+      email: email.toLowerCase(), 
+      token, 
+      userData: { name, passwordHash: hashPassword(password) },
+      role: 'user',
+      createdAt: new Date() 
+    });
     
     const html = `
       <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
@@ -297,7 +310,7 @@ app.post('/api/auth/signup', async (req, res) => {
     `;
 
     await maybeSendEmail(email, 'Verify your Satvic account', `Your verification code is ${token}`, html);
-    res.status(201).json({ id, email, requiresVerification: true });
+    res.status(201).json({ email, requiresVerification: true });
   } catch (e) {
     console.error('Signup error:', e);
     res.status(500).json({ error: 'Server error' });
@@ -307,11 +320,28 @@ app.post('/api/auth/signup', async (req, res) => {
 app.post('/api/auth/verify', (req, res) => {
   try {
     const { email, token } = req.body || {};
-    const v = inMemoryVerifications.find((x) => x.email.toLowerCase() === String(email).toLowerCase() && x.token === token);
-    if (!v) return res.status(400).json({ error: 'Invalid code' });
-    const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
-    if (!u) return res.status(404).json({ error: 'User not found' });
-    u.verified = true;
+    const vIdx = inMemoryVerifications.findIndex((x) => x.email.toLowerCase() === String(email).toLowerCase() && x.token === token);
+    if (vIdx === -1) return res.status(400).json({ error: 'Invalid code' });
+    
+    const v = inMemoryVerifications[vIdx];
+    
+    if (v.role === 'delivery') {
+      const id = String(Date.now());
+      const dp = { id, email: v.email, name: v.userData.name, passwordHash: v.userData.passwordHash, phone: v.userData.phone, city: v.userData.city, verified: true };
+      inMemoryDeliveryPartners.push(dp);
+    } else {
+      // User flow
+      if (v.userData) {
+        const id = String(Date.now());
+        const user = { id, email: v.email, name: v.userData.name, passwordHash: v.userData.passwordHash, verified: true };
+        inMemoryUsers.push(user);
+      } else {
+        const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+        if (u) u.verified = true;
+      }
+    }
+    
+    inMemoryVerifications.splice(vIdx, 1);
     res.json({ verified: true });
   } catch {
     res.status(500).json({ error: 'Server error' });
@@ -331,7 +361,7 @@ app.post('/api/auth/login', (req, res) => {
       const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === u.email.toLowerCase());
       if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
       
-      inMemoryVerifications.push({ email: u.email, token, createdAt: new Date() });
+      inMemoryVerifications.push({ email: u.email, token, role: 'user', createdAt: new Date() });
       
       const html = `
         <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
@@ -360,7 +390,8 @@ app.get('/api/auth/me', userAuth, (req, res) => {
 });
 
 // Delivery Partner Auth
-app.post('/api/delivery-auth/signup', async (req, res) => {
+// Admin: Create Delivery Partner
+app.post('/api/admin/delivery-partners', adminAuth, async (req, res) => {
   try {
     const { email, name, password, phone, city } = req.body || {};
     if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
@@ -374,7 +405,7 @@ app.post('/api/delivery-auth/signup', async (req, res) => {
         passwordHash: hashPassword(password),
         phone,
         city,
-        verified: true // Auto verify for now to simplify
+        verified: true
       });
       return res.status(201).json({ id: String(dp._id), email: dp.email });
     }
@@ -390,6 +421,10 @@ app.post('/api/delivery-auth/signup', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// Remove old delivery signup endpoint
+// ... other routes ...
+
 
 app.post('/api/delivery-auth/login', async (req, res) => {
   try {
