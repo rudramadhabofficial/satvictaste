@@ -213,7 +213,7 @@ function deliveryPartnerAuth(req, res, next) {
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
-async function maybeSendEmail(to, subject, text) {
+async function maybeSendEmail(to, subject, text, html) {
   try {
     if (!process.env.ZOHO_CLIENT_ID) {
       console.log('[NOTIFICATION] to:', to, '| subject:', subject, '| text:', text);
@@ -236,6 +236,7 @@ async function maybeSendEmail(to, subject, text) {
       to,
       subject,
       text,
+      html,
     });
   } catch (e) {
     console.warn('Email send failed:', e.message);
@@ -277,11 +278,28 @@ app.post('/api/auth/signup', async (req, res) => {
     const id = String(Date.now());
     const user = { id, email, name, passwordHash: hashPassword(password), verified: false };
     inMemoryUsers.push(user);
-    const token = String(Math.floor(100000 + Math.random() * 900000));
+    const token = String(Math.floor(1000 + Math.random() * 9000));
     inMemoryVerifications.push({ email, token, createdAt: new Date() });
-    await maybeSendEmail(email, 'Satvic verification code', `Your verification code is ${token}`);
-    res.status(201).json({ id, email, requiresVerification: true, devToken: process.env.SMTP_HOST ? undefined : token });
-  } catch {
+    
+    const html = `
+      <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
+        <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Welcome to Satvic</h1>
+        <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
+          To begin your journey towards calm and clean discovery, please verify your email with the code below:
+        </p>
+        <div style="background: #FFFFFF; border: 1px solid rgba(44, 51, 46, 0.06); border-radius: 14px; padding: 32px; margin: 32px 0; text-align: center;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #5F8B6E;">${token}</span>
+        </div>
+        <p style="color: #7D8781; font-size: 14px; text-align: center;">
+          This code will expire in 10 minutes. If you didn't create an account, you can safely ignore this email.
+        </p>
+      </div>
+    `;
+
+    await maybeSendEmail(email, 'Verify your Satvic account', `Your verification code is ${token}`, html);
+    res.status(201).json({ id, email, requiresVerification: true });
+  } catch (e) {
+    console.error('Signup error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -306,7 +324,29 @@ app.post('/api/auth/login', (req, res) => {
     const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
     if (!u) return res.status(401).json({ error: 'Invalid credentials' });
     if (u.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Invalid credentials' });
-    if (!u.verified) return res.status(403).json({ error: 'Email not verified' });
+    if (!u.verified) {
+      // Re-send verification code if not verified
+      const token = String(Math.floor(1000 + Math.random() * 9000));
+      // Remove old token for this email if exists
+      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === u.email.toLowerCase());
+      if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+      
+      inMemoryVerifications.push({ email: u.email, token, createdAt: new Date() });
+      
+      const html = `
+        <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
+          <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Complete your Verification</h1>
+          <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
+            You recently tried to login but your email hasn't been verified yet. Please use the code below to complete your registration:
+          </p>
+          <div style="background: #FFFFFF; border: 1px solid rgba(44, 51, 46, 0.06); border-radius: 14px; padding: 32px; margin: 32px 0; text-align: center;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #5F8B6E;">${token}</span>
+          </div>
+        </div>
+      `;
+      maybeSendEmail(u.email, 'Satvic verification code', `Your verification code is ${token}`, html);
+      return res.status(403).json({ error: 'Email not verified' });
+    }
     res.json({ token: signJwt({ sub: u.id, email: u.email, role: 'user' }), id: u.id, email: u.email, name: u.name });
   } catch {
     res.status(500).json({ error: 'Server error' });
