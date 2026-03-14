@@ -215,7 +215,9 @@ const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
 async function maybeSendEmail(to, subject, text, html) {
   try {
+    console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject}`);
     if (!process.env.ZOHO_CLIENT_ID) {
+      console.log('[EMAIL] ZOHO_CLIENT_ID missing. Check Render Env Vars.');
       console.log('[NOTIFICATION] to:', to, '| subject:', subject, '| text:', text);
       return;
     }
@@ -231,15 +233,17 @@ async function maybeSendEmail(to, subject, text, html) {
         refreshToken: process.env.ZOHO_REFRESH_TOKEN,
       },
     });
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
       to,
       subject,
       text,
       html,
     });
+    console.log(`[EMAIL] Success! MessageId: ${info.messageId}`);
   } catch (e) {
-    console.warn('Email send failed:', e.message);
+    console.error('[EMAIL] CRITICAL FAILURE:', e.message);
+    if (e.response) console.error('[EMAIL] Zoho Response:', e.response);
   }
 }
 
@@ -296,7 +300,7 @@ app.post('/api/auth/signup', async (req, res) => {
     
     const html = `
       <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
-        <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Welcome to Satvic</h1>
+        <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Welcome to SatvicTaste</h1>
         <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
           To begin your journey towards calm and clean discovery, please verify your email with the code below:
         </p>
@@ -309,7 +313,7 @@ app.post('/api/auth/signup', async (req, res) => {
       </div>
     `;
 
-    await maybeSendEmail(email, 'Verify your Satvic account', `Your verification code is ${token}`, html);
+    await maybeSendEmail(email, 'Verify your SatvicTaste account', `Your verification code is ${token}`, html);
     res.status(201).json({ email, requiresVerification: true });
   } catch (e) {
     console.error('Signup error:', e);
@@ -367,14 +371,14 @@ app.post('/api/auth/login', (req, res) => {
         <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
           <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Complete your Verification</h1>
           <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
-            You recently tried to login but your email hasn't been verified yet. Please use the code below to complete your registration:
+            You recently tried to login to SatvicTaste but your email hasn't been verified yet. Please use the code below to complete your registration:
           </p>
           <div style="background: #FFFFFF; border: 1px solid rgba(44, 51, 46, 0.06); border-radius: 14px; padding: 32px; margin: 32px 0; text-align: center;">
             <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #5F8B6E;">${token}</span>
           </div>
         </div>
       `;
-      maybeSendEmail(u.email, 'Satvic verification code', `Your verification code is ${token}`, html);
+      maybeSendEmail(u.email, 'SatvicTaste verification code', `Your verification code is ${token}`, html);
       return res.status(403).json({ error: 'Email not verified' });
     }
     res.json({ token: signJwt({ sub: u.id, email: u.email, role: 'user' }), id: u.id, email: u.email, name: u.name });
