@@ -3,15 +3,15 @@ import './index.css'
 import { Button } from './components/ui/button.jsx'
 import { Input as UiInput } from './components/ui/input.jsx'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE = 'https://satvictaste.onrender.com'
 
 function LandingHeader() {
   return (
     <header className="header">
       <div className="header-inner">
         <div className="header-brand">
-          <img src="/logo.png" alt="Satvic" className="header-logo" />
-          <span className="header-title">delivery.satvic</span>
+          <img src="/logo.png" alt="SatvicTaste" className="header-logo" />
+          <span className="header-title">delivery.satvictaste</span>
         </div>
         <nav className="nav">
           <a href="#how">How it works</a>
@@ -22,7 +22,7 @@ function LandingHeader() {
   )
 }
 
-function RegistrationForm({ onRegistered }) {
+function RegistrationForm({ onVerificationNeeded }) {
   const [profile, setProfile] = useState({
     name: '', email: '', password: '', phone: '', city: ''
   })
@@ -42,8 +42,7 @@ function RegistrationForm({ onRegistered }) {
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage('Registration successful! You can now login.')
-        onRegistered()
+        onVerificationNeeded(profile.email)
       } else {
         setMessage(data.error || 'Registration failed')
       }
@@ -148,8 +147,65 @@ function LoginForm({ onLogin }) {
   )
 }
 
+function VerifyForm({ email, onVerified }) {
+  const [token, setToken] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        onVerified()
+      } else {
+        setError(data.error || 'Verification failed')
+      }
+    } catch (e) {
+      setError('Verification failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="section">
+      <div className="container-tight">
+        <div className="card" style={{ textAlign: 'center' }}>
+          <h2 className="view-title">Verify Email</h2>
+          <p style={{ marginBottom: '24px', color: 'var(--muted)' }}>
+            We've sent a 4-digit code to <strong>{email}</strong>
+          </p>
+          {error && <div className="message error">{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '24px' }}>
+              <UiInput
+                placeholder="4-digit code"
+                value={token}
+                onChange={e => setToken(e.target.value)}
+                style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '24px' }}
+                maxLength={4}
+                required
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Verifying...' : 'Verify & Continue'}
+            </Button>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function LandingPage({ onLogin }) {
-  const [showLogin, setShowLogin] = useState(true)
   return (
     <div className="app-wrap">
       <LandingHeader />
@@ -159,21 +215,14 @@ function LandingPage({ onLogin }) {
           <p className="hero-sub" style={{ fontSize: '18px', maxWidth: '600px', margin: '20px auto' }}>Join SatvicTaste as a delivery partner and help us bring healthy, satvic meals to those who need them.</p>
         </section>
 
-        {showLogin ? (
-          <>
-            <LoginForm onLogin={onLogin} />
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <button onClick={() => setShowLogin(false)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Don't have an account? Register</button>
-            </div>
-          </>
-        ) : (
-          <>
-            <RegistrationForm onRegistered={() => setShowLogin(true)} />
-            <div style={{ textAlign: 'center', marginTop: '20px' }}>
-              <button onClick={() => setShowLogin(true)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer' }}>Already have an account? Login</button>
-            </div>
-          </>
-        )}
+        <LoginForm onLogin={onLogin} />
+        
+        <div style={{ textAlign: 'center', marginTop: '32px', padding: '24px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
+          <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
+            Want to become a delivery partner? <br />
+            Please contact our administration to get your ID created.
+          </p>
+        </div>
       </main>
       <Footer />
     </div>
