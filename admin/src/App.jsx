@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react'
 import './index.css'
 
-const API = import.meta.env.VITE_API_BASE_URL ? `${import.meta.env.VITE_API_BASE_URL}/api` : '/api'
+const API = 'https://satvictaste.onrender.com/api'
 
 function Header({ authed, onLogout }) {
   return (
     <header className="header">
       <div className="header-inner">
         <div className="header-brand">
-          <img src="/logo.png" alt="Satvic" className="header-logo" />
-          <div className="header-brand-text">
-            <span className="header-title">Satvic</span>
-            <span className="header-badge">Admin</span>
-          </div>
+          <img src="/logo.png" alt="SatvicTaste" className="header-logo" />
+          <span className="header-title">admin.satvictaste</span>
         </div>
         <nav className="nav">
           <a href="#approvals">Approvals</a>
