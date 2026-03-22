@@ -31,6 +31,7 @@ const membershipPlanSchema = new mongoose.Schema({
   durationDays: { type: Number, required: true },
   type: { type: String, enum: ['daily_meal', 'subscription', 'on_table_qr'], default: 'subscription' },
   mealType: { type: String, enum: ['lunch', 'dinner', 'both', 'none'], default: 'none' },
+  allowedItems: [{ name: String, price: Number }], // Menu items included in this plan
   benefits: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
@@ -39,13 +40,14 @@ const userSubscriptionSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   restaurantId: { type: String, required: true },
   planId: { type: String, required: true },
-  planType: { type: String, enum: ['weekly', 'monthly', 'trial'], default: 'monthly' },
-  mealPlan: { type: String, enum: ['veg_thali', 'satvik_diet', 'jain_special'], default: 'veg_thali' },
-  deliveryDays: [String], // e.g., ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
-  status: { type: String, enum: ['active', 'expired', 'pending_payment'], default: 'active' },
+  status: { type: String, enum: ['active', 'paused', 'expired', 'pending_payment'], default: 'active' },
   startDate: { type: Date, default: Date.now },
   endDate: { type: Date },
+  deliveryAddress: { type: String },
+  deliveryTime: { type: String }, // e.g. "12:00"
+  selectedItems: [{ name: String, price: Number, quantity: Number }],
   remainingMeals: { type: Number },
+  lastOrderDate: { type: String }, // Format: "YYYY-MM-DD" to prevent duplicates
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -76,14 +78,16 @@ const orderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
   status: { 
     type: String, 
-    enum: ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'PICKED', 'DELIVERED', 'CANCELLED'], 
+    enum: ['PLACED', 'ACCEPTED', 'PREPARING', 'READY', 'ASSIGNED', 'PICKED', 'DELIVERED', 'CANCELLED'], 
     default: 'PLACED' 
   },
   deliveryPartnerId: { type: String },
   deliveryAddress: { type: String },
+  isSubscriptionOrder: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   acceptedAt: { type: Date },
   readyAt: { type: Date },
+  assignedAt: { type: Date },
   pickedAt: { type: Date },
   deliveredAt: { type: Date },
 });
@@ -128,6 +132,7 @@ const restaurantSchema = new mongoose.Schema({
   menu: [{ name: String, description: String, price: Number }],
   story: String,
   bestTimeToVisit: String,
+  ownerId: { type: String }, // User ID of the partner
 });
 
 const partnerSubmissionSchema = new mongoose.Schema({
@@ -210,6 +215,21 @@ function deliveryPartnerAuth(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }
+
+async function partnerAuth(req, res, next) {
+   try {
+     const auth = req.headers.authorization || '';
+     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+     if (!token) return res.status(401).json({ error: 'Unauthorized' });
+     const decoded = verifyJwt(token);
+     
+     // Attach user to request
+     req.user = decoded;
+     next();
+   } catch (e) {
+     return res.status(401).json({ error: 'Unauthorized' });
+   }
+ }
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
@@ -737,7 +757,7 @@ app.get('/api/restaurants/:id/memberships', async (req, res) => {
 
 app.post('/api/subscribe', async (req, res) => {
   try {
-    const { userId, restaurantId, planId } = req.body || {};
+    const { userId, restaurantId, planId, deliveryAddress, deliveryTime, selectedItems } = req.body || {};
     if (!userId || !restaurantId || !planId) {
       return res.status(400).json({ error: 'userId, restaurantId, planId required' });
     }
@@ -753,28 +773,24 @@ app.post('/api/subscribe', async (req, res) => {
     const endDate = new Date();
     endDate.setDate(endDate.getDate() + plan.durationDays);
 
-    if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      const doc = await UserSubscription.create({
-        userId,
-        restaurantId,
-        planId,
-        status: 'active',
-        endDate,
-        remainingMeals: plan.type === 'daily_meal' ? plan.durationDays : undefined,
-      });
-      return res.status(201).json({ id: String(doc._id), status: doc.status });
-    }
-    const id = String(Date.now());
-    inMemorySubs.push({
-      id,
+    const subData = {
       userId,
       restaurantId,
       planId,
       status: 'active',
       endDate,
+      deliveryAddress: deliveryAddress || '',
+      deliveryTime: deliveryTime || '12:00',
+      selectedItems: Array.isArray(selectedItems) ? selectedItems : [],
       remainingMeals: plan.type === 'daily_meal' ? plan.durationDays : undefined,
-      createdAt: new Date(),
-    });
+    };
+
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const doc = await UserSubscription.create(subData);
+      return res.status(201).json({ id: String(doc._id), status: doc.status });
+    }
+    const id = String(Date.now());
+    inMemorySubs.push({ ...subData, id, createdAt: new Date() });
     res.status(201).json({ id, status: 'active' });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
@@ -942,6 +958,36 @@ app.get('/api/users/:userId/orders', async (req, res) => {
   }
 });
 
+app.post('/api/orders/:id/cancel', userAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.sub;
+
+    let order;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      order = await Order.findById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+      if (order.status !== 'PLACED') return res.status(400).json({ error: 'Order cannot be cancelled now' });
+      
+      order.status = 'CANCELLED';
+      await order.save();
+    } else {
+      order = inMemoryOrders.find(x => x.id === id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.userId !== userId) return res.status(403).json({ error: 'Forbidden' });
+      if (order.status !== 'PLACED') return res.status(400).json({ error: 'Order cannot be cancelled' });
+      
+      order.status = 'CANCELLED';
+    }
+    
+    await notifyRestaurant(order.restaurantId, 'Order Cancelled', `Order #${(order._id ? String(order._id) : order.id).slice(-6)} has been cancelled by the user.`);
+    res.json({ success: true, status: 'CANCELLED' });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/api/restaurants/:id/orders', async (req, res) => {
   try {
     const { id } = req.params;
@@ -955,13 +1001,170 @@ app.get('/api/restaurants/:id/orders', async (req, res) => {
   }
 });
 
+// --- Order Management Endpoints ---
+
+// Partner: Update Order Status (ACCEPTED, PREPARING, READY)
+app.post('/api/partner/orders/:id/status', partnerAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const userId = req.user.sub;
+
+    if (!['ACCEPTED', 'PREPARING', 'READY', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status transition for partner' });
+    }
+
+    let order;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      order = await Order.findById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      
+      const restaurant = await Restaurant.findById(order.restaurantId);
+      if (!restaurant || restaurant.ownerId !== userId) {
+        return res.status(403).json({ error: 'Forbidden: You do not own this restaurant' });
+      }
+
+      const updateData = { status };
+      if (status === 'ACCEPTED') updateData.acceptedAt = new Date();
+      if (status === 'READY') updateData.readyAt = new Date();
+      
+      order = await Order.findByIdAndUpdate(id, updateData, { new: true });
+    } else {
+      order = inMemoryOrders.find(x => x.id === id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      
+      // In-memory check for restaurant ownership
+      const restaurant = sampleData.find(r => r._id === order.restaurantId);
+      if (restaurant && restaurant.ownerId && restaurant.ownerId !== userId) {
+        return res.status(403).json({ error: 'Forbidden' });
+      }
+
+      const updateData = { status };
+      if (status === 'ACCEPTED') updateData.acceptedAt = new Date();
+      if (status === 'READY') updateData.readyAt = new Date();
+      Object.assign(order, updateData);
+    }
+
+    const orderIdShort = (order._id ? String(order._id) : order.id).slice(-6);
+    if (status === 'ACCEPTED') {
+      await notifyUser(order.userId, 'Order Accepted', `Your order #${orderIdShort} has been accepted by the restaurant.`);
+    } else if (status === 'READY') {
+      await notifyUser(order.userId, 'Order Ready', `Your order #${orderIdShort} is ready and will be picked up soon.`);
+    }
+
+    res.json({ id: order._id ? String(order._id) : order.id, status: order.status });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delivery Partner: View Available Orders
+app.get('/api/delivery/available-orders', deliveryPartnerAuth, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const list = await Order.find({ status: 'READY' }).sort({ readyAt: 1 }).lean();
+      return res.json(list.map(o => ({ ...o, id: String(o._id) })));
+    }
+    res.json(inMemoryOrders.filter(o => o.status === 'READY').sort((a, b) => a.readyAt - b.readyAt));
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delivery Partner: Accept Order for Delivery
+app.post('/api/delivery/orders/:id/accept', deliveryPartnerAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const dpId = req.user.sub;
+
+    let order;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      order = await Order.findById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.status !== 'READY') return res.status(400).json({ error: 'Order is not ready for pickup' });
+      
+      order = await Order.findByIdAndUpdate(id, { 
+        status: 'ASSIGNED', 
+        deliveryPartnerId: dpId,
+        assignedAt: new Date()
+      }, { new: true });
+    } else {
+      order = inMemoryOrders.find(x => x.id === id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.status !== 'READY') return res.status(400).json({ error: 'Order not ready' });
+      
+      Object.assign(order, { 
+        status: 'ASSIGNED', 
+        deliveryPartnerId: dpId,
+        assignedAt: new Date()
+      });
+    }
+
+    const orderIdShort = (order._id ? String(order._id) : order.id).slice(-6);
+    await notifyUser(order.userId, 'Delivery Partner Assigned', `A delivery partner has been assigned to your order #${orderIdShort}.`);
+    
+    res.json({ id: order._id ? String(order._id) : order.id, status: order.status });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delivery Partner: Update Delivery Status (PICKED, DELIVERED)
+app.post('/api/delivery/orders/:id/status', deliveryPartnerAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const dpId = req.user.sub;
+
+    if (!['PICKED', 'DELIVERED'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status transition for delivery partner' });
+    }
+
+    let order;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      order = await Order.findById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.deliveryPartnerId !== dpId) return res.status(403).json({ error: 'Forbidden' });
+
+      const updateData = { status };
+      if (status === 'PICKED') updateData.pickedAt = new Date();
+      if (status === 'DELIVERED') updateData.deliveredAt = new Date();
+      
+      order = await Order.findByIdAndUpdate(id, updateData, { new: true });
+    } else {
+      order = inMemoryOrders.find(x => x.id === id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.deliveryPartnerId !== dpId) return res.status(403).json({ error: 'Forbidden' });
+
+      const updateData = { status };
+      if (status === 'PICKED') updateData.pickedAt = new Date();
+      if (status === 'DELIVERED') updateData.deliveredAt = new Date();
+      Object.assign(order, updateData);
+    }
+
+    const orderIdShort = (order._id ? String(order._id) : order.id).slice(-6);
+    if (status === 'PICKED') {
+      await notifyUser(order.userId, 'Order Picked Up', `Your order #${orderIdShort} has been picked up and is on its way.`);
+    } else if (status === 'DELIVERED') {
+      await notifyUser(order.userId, 'Order Delivered', `Your order #${orderIdShort} has been delivered. Enjoy your meal!`);
+    }
+
+    res.json({ id: order._id ? String(order._id) : order.id, status: order.status });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/orders/:id/status', async (req, res) => {
+  // Keeping this for backward compatibility but routing to correct logic internally if possible
+  // or just keeping it simple for admin/test purposes
   try {
     const { id } = req.params;
     const { status } = req.body;
     const updateData = { status };
     if (status === 'ACCEPTED') updateData.acceptedAt = new Date();
     if (status === 'READY') updateData.readyAt = new Date();
+    if (status === 'ASSIGNED') updateData.assignedAt = new Date();
     if (status === 'PICKED') updateData.pickedAt = new Date();
     if (status === 'DELIVERED') updateData.deliveredAt = new Date();
 
@@ -981,8 +1184,6 @@ app.post('/api/orders/:id/status', async (req, res) => {
       await notifyUser(order.userId, 'Order Accepted', `Your order #${orderIdShort} has been accepted by the restaurant.`);
     } else if (status === 'READY') {
       await notifyUser(order.userId, 'Order Ready', `Your order #${orderIdShort} is ready and will be picked up soon.`);
-      // notify available delivery partners
-      console.log('[NOTIFICATION] Broad-cast: New delivery available for order #', orderIdShort);
     } else if (status === 'DELIVERED') {
       await notifyUser(order.userId, 'Order Delivered', `Your order #${orderIdShort} has been delivered. Enjoy your meal!`);
     }
@@ -1419,6 +1620,11 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
       if (!submission) return res.status(404).json({ error: 'Submission not found' });
     }
     const { profile, menuItems } = submission;
+    
+    // Find owner user by email
+    const ownerEmail = profile.email || '';
+    let ownerUser = inMemoryUsers.find(u => u.email.toLowerCase() === ownerEmail.toLowerCase());
+    
     const RestaurantModel = mongoose.connection.readyState === 1 ? Restaurant : null;
     const restaurantData = {
       name: profile.name || 'Restaurant',
@@ -1451,6 +1657,7 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
       })),
       story: profile.notes || '',
       bestTimeToVisit: profile.hours || '',
+      ownerId: ownerUser ? ownerUser.id : undefined,
     };
     if (RestaurantModel) {
       const created = await RestaurantModel.create(restaurantData);
@@ -1462,27 +1669,30 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
       } catch (upErr) {
         console.warn('Update submission status:', upErr.message);
       }
-      try {
-        const u = inMemoryUsers.find((x) => x.email && submission.profile && submission.profile.email && x.email.toLowerCase() === String(submission.profile.email).toLowerCase());
-        if (u) u.partnerId = String(created._id);
-      } catch {}
+      
+      if (ownerUser) {
+        ownerUser.partnerId = String(created._id);
+      }
+
       return res.json({
         id: String(created._id),
         status: 'approved',
         restaurantId: String(created._id),
       });
     }
-    sampleData.push({ ...restaurantData, _id: String(sampleData.length + 1) });
+    const newRestaurant = { ...restaurantData, _id: String(sampleData.length + 1) };
+    sampleData.push(newRestaurant);
     const inMem = inMemorySubmissions.find((s) => s.id === id);
     if (inMem) inMem.status = 'approved';
-    try {
-      const u = inMemoryUsers.find((x) => x.email && inMem.profile && inMem.profile.email && x.email.toLowerCase() === String(inMem.profile.email).toLowerCase());
-      if (u) u.partnerId = String(sampleData.length);
-    } catch {}
+    
+    if (ownerUser) {
+      ownerUser.partnerId = newRestaurant._id;
+    }
+
     res.json({
       id: submission.id,
       status: 'approved',
-      restaurantId: String(sampleData.length),
+      restaurantId: newRestaurant._id,
     });
   } catch (e) {
     console.error('Approve error:', e.message);
@@ -1522,9 +1732,75 @@ async function escalateCheck() {
   } catch (_) {}
 }
 
+// --- Auto-Order Generation for Subscriptions ---
+async function checkAndSpawnSubscriptionOrders() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+
+    let activeSubs = [];
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      activeSubs = await UserSubscription.find({ status: 'active' });
+    } else {
+      activeSubs = inMemorySubs.filter(s => s.status === 'active');
+    }
+
+    for (const sub of activeSubs) {
+      // 1. Skip if already ordered today
+      if (sub.lastOrderDate === today) continue;
+
+      // 2. Parse delivery time (e.g., "12:00")
+      const [h, m] = (sub.deliveryTime || "12:00").split(':').map(Number);
+      const deliveryDate = new Date();
+      deliveryDate.setHours(h, m, 0, 0);
+
+      // 3. Check if current time is 30 mins before delivery time
+      const leadTimeMs = 30 * 60 * 1000;
+      const spawnTime = deliveryDate.getTime() - leadTimeMs;
+
+      if (now.getTime() >= spawnTime && now.getTime() < deliveryDate.getTime()) {
+        console.log(`[SUBSCRIPTION] Spawning order for User ${sub.userId} from Restaurant ${sub.restaurantId}`);
+        
+        const orderData = {
+          restaurantId: sub.restaurantId,
+          userId: sub.userId,
+          items: sub.selectedItems,
+          totalPrice: 0, // Subscription orders are prepaid
+          paymentStatus: 'paid',
+          deliveryAddress: sub.deliveryAddress,
+          status: 'PLACED',
+          isSubscriptionOrder: true,
+          createdAt: new Date()
+        };
+
+        if (mongoose.connection.readyState === 1 && MONGO_URI) {
+          const newOrder = await Order.create(orderData);
+          sub.lastOrderDate = today;
+          if (sub.remainingMeals != null) sub.remainingMeals -= 1;
+          await sub.save();
+          
+          const orderIdShort = String(newOrder._id).slice(-6);
+          await notifyUser(sub.userId, 'Subscription Order Placed', `Your daily subscription meal order #${orderIdShort} has been placed for ${sub.deliveryTime}.`);
+        } else {
+          const newOrder = { ...orderData, id: String(Date.now() + Math.random()) };
+          inMemoryOrders.push(newOrder);
+          sub.lastOrderDate = today;
+          if (sub.remainingMeals != null) sub.remainingMeals -= 1;
+          
+          await notifyUser(sub.userId, 'Subscription Order Placed', `Your daily subscription meal order #${newOrder.id.slice(-6)} has been placed for ${sub.deliveryTime}.`);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error spawning subscription orders:', e.message);
+  }
+}
+
 connectMongo().then(() => {
   app.listen(PORT, () => {
     console.log(`API server listening on port ${PORT}`);
   });
   setInterval(escalateCheck, 60000);
+  setInterval(checkAndSpawnSubscriptionOrders, 5 * 60000); // Check every 5 mins
+  checkAndSpawnSubscriptionOrders(); // Initial check
 });
