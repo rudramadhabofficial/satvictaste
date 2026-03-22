@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button.jsx'
+import { Clock, ShoppingBag, MapPin, CheckCircle2 } from 'lucide-react'
 
 const API_BASE = 'https://satvictaste.onrender.com'
 
@@ -105,33 +106,58 @@ export default function AccountPage() {
                 </div>
               ) : (
                 subs.map((s) => (
-                  <div key={s.id} className="card" style={{ padding: '24px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                  <div key={s.id} className="card" style={{ padding: '32px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
                       <div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: 'var(--font-display)' }}>Membership Plan</div>
-                        <div style={{ fontSize: '13px', color: 'var(--muted)' }}>Restaurant ID: {s.restaurantId}</div>
+                        <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '4px' }}>
+                          Active Subscription
+                        </div>
+                        <h4 style={{ fontSize: '20px', fontWeight: 'bold' }}>Restaurant ID: {s.restaurantId}</h4>
                       </div>
-                      <span className={`badge ${s.status === 'active' ? 'badge-verified' : ''}`} style={{ textTransform: 'capitalize' }}>
+                      <span className="badge badge-verified" style={{ textTransform: 'capitalize' }}>
                         {s.status}
                       </span>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '24px', marginBottom: '24px' }}>
-                      <div style={{ flex: 1, padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent)' }}>{s.remainingMeals ?? '∞'}</div>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)' }}>Meals Remaining</div>
+                    <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
+                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Delivery Time</div>
+                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <Clock size={18} /> {s.deliveryTime || '12:00'}
+                        </div>
                       </div>
-                      <div style={{ flex: 1, padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{s.endDate ? new Date(s.endDate).toLocaleDateString() : 'N/A'}</div>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)' }}>Expiry Date</div>
+                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Meals Remaining</div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent)' }}>{s.remainingMeals ?? '∞'}</div>
+                      </div>
+                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--verified)' }}>Active</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      {s.remainingMeals > 0 && (
-                        <Button onClick={() => redeemMeal(s.id)} style={{ flex: 1 }} size="lg">Redeem Meal</Button>
-                      )}
-                      <Button onClick={() => checkIn(s.id)} variant="soft" style={{ flex: 1 }}>Check-in</Button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                      <div>
+                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <ShoppingBag size={16} /> Selected Daily Items
+                        </h5>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          {s.selectedItems?.length > 0 ? s.selectedItems.map((item, idx) => (
+                            <div key={idx} style={{ fontSize: '14px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <CheckCircle2 size={14} style={{ color: 'var(--verified)' }} />
+                              {item.name}
+                            </div>
+                          )) : <p style={{ fontSize: '13px', color: 'var(--muted)' }}>No items selected.</p>}
+                        </div>
+                      </div>
+                      <div>
+                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <MapPin size={16} /> Delivery Address
+                        </h5>
+                        <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                          {s.deliveryAddress || 'No address set.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))

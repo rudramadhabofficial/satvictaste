@@ -11,6 +11,7 @@ import MapPage from './pages/MapPage.jsx'
 import BrowsePage from './pages/BrowsePage.jsx'
 import RestaurantDetailPage from './pages/RestaurantDetailPage.jsx'
 import AccountPage from './pages/AccountPage.jsx'
+import OrdersPage from './pages/OrdersPage.jsx'
 import AboutPage from './pages/AboutPage.jsx'
 import CheckoutPage from './pages/CheckoutPage.jsx'
 import { LoginPage, SignupPage, VerifyPage } from './pages/AuthPages.jsx'
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/restaurants" element={<BrowsePage />} />
         <Route path="/restaurants/:id" element={<RestaurantDetailPage onAddToCart={onAddToCart} />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/orders" element={<OrdersPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
