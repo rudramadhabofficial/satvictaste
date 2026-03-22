@@ -247,7 +247,7 @@ function AvailableDeliveries() {
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/delivery/available`, {
+      const res = await fetch(`${API_BASE}/api/delivery/available-orders`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
       })
       const data = await res.json()
@@ -267,17 +267,20 @@ function AvailableDeliveries() {
 
   const pickUp = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/delivery/${id}/pick`, {
+      const res = await fetch(`${API_BASE}/api/delivery/orders/${id}/accept`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
       })
       if (res.ok) {
-        setMsg('Order picked up!')
+        setMsg('Order accepted for delivery!')
         load()
         setTimeout(() => setMsg(''), 3000)
+      } else {
+        const data = await res.json()
+        setMsg(data.error || 'Failed to accept')
       }
     } catch (e) {
-      setMsg('Failed to pick up')
+      setMsg('Failed to accept')
     }
   }
 
@@ -332,11 +335,34 @@ function MyDeliveries() {
     return () => clearInterval(t)
   }, [])
 
+  const pickUpOrder = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/delivery/orders/${id}/status`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` 
+        },
+        body: JSON.stringify({ status: 'PICKED' })
+      })
+      if (res.ok) {
+        setMsg('Order picked up!')
+        load()
+      }
+    } catch (e) {
+      setMsg('Failed to pick up')
+    }
+  }
+
   const complete = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/delivery/${id}/complete`, {
+      const res = await fetch(`${API_BASE}/api/delivery/orders/${id}/status`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` 
+        },
+        body: JSON.stringify({ status: 'DELIVERED' })
       })
       if (res.ok) {
         setMsg('Delivery completed!')
@@ -356,18 +382,22 @@ function MyDeliveries() {
       {msg && <div className="message success">{msg}</div>}
       {loading ? <p>Loading...</p> : (
         <div className="grid grid-2">
-          {deliveries.filter(d => d.status === 'picked').length === 0 && <p className="empty-state">No active deliveries.</p>}
-          {deliveries.filter(d => d.status === 'picked').map(d => (
+          {deliveries.filter(d => ['ASSIGNED', 'PICKED'].includes(d.status)).length === 0 && <p className="empty-state">No active deliveries.</p>}
+          {deliveries.filter(d => ['ASSIGNED', 'PICKED'].includes(d.status)).map(d => (
             <div key={d.id} className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <h3>Order ID: {d.id.slice(-6)}</h3>
-                <span className="badge">Picked Up</span>
+                <span className={`badge ${d.status === 'PICKED' ? 'badge-verified' : ''}`}>{d.status}</span>
               </div>
               <p>Restaurant: {d.restaurantId}</p>
-              <p>User ID: {d.userId}</p>
-              <p>Scheduled: {new Date(d.scheduledAt).toLocaleString()}</p>
-              <div style={{ marginTop: '16px' }}>
-                <Button onClick={() => complete(d.id)}>Mark Delivered</Button>
+              <p>Address: {d.deliveryAddress}</p>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                {d.status === 'ASSIGNED' && (
+                  <Button onClick={() => pickUpOrder(d.id)}>Mark Picked Up</Button>
+                )}
+                {d.status === 'PICKED' && (
+                  <Button onClick={() => complete(d.id)}>Mark Delivered</Button>
+                )}
               </div>
             </div>
           ))}
@@ -376,13 +406,13 @@ function MyDeliveries() {
 
       <h3 style={{ marginTop: '40px', marginBottom: '20px' }}>History</h3>
       <div className="grid grid-2">
-        {deliveries.filter(d => d.status === 'done').map(d => (
+        {deliveries.filter(d => d.status === 'DELIVERED').map(d => (
           <div key={d.id} className="card" style={{ opacity: 0.8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <h3>Order ID: {d.id.slice(-6)}</h3>
               <span className="badge badge-verified">Delivered</span>
             </div>
-            <p style={{ fontSize: '12px', color: 'var(--muted)' }}>Completed: {new Date(d.doneAt).toLocaleString()}</p>
+            <p style={{ fontSize: '12px', color: 'var(--muted)' }}>Completed: {new Date(d.deliveredAt).toLocaleString()}</p>
           </div>
         ))}
       </div>
