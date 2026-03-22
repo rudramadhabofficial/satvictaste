@@ -11,23 +11,38 @@ export default function MembershipPage({ partnerId }) {
   const [type, setType] = useState('subscription')
   const [mealType, setMealType] = useState('none')
   const [benefitsText, setBenefitsText] = useState('')
+  const [allowedItems, setAllowedItems] = useState([])
+  const [restaurant, setRestaurant] = useState(null)
   const [plans, setPlans] = useState([])
   const [msg, setMsg] = useState('')
 
-  const loadPlans = async (rid) => {
-    if (!rid) { setPlans([]); return }
+  const loadData = async (rid) => {
+    if (!rid) { setPlans([]); setRestaurant(null); return }
     try {
-      const r = await fetch(`${API_BASE}/api/restaurants/${rid}/memberships`)
-      const data = await r.json()
-      setPlans(Array.isArray(data) ? data : [])
+      const [pRes, rRes] = await Promise.all([
+        fetch(`${API_BASE}/api/restaurants/${rid}/memberships`),
+        fetch(`${API_BASE}/api/restaurants/${rid}`)
+      ])
+      const pData = await pRes.json()
+      const rData = await rRes.json()
+      setPlans(Array.isArray(pData) ? pData : [])
+      setRestaurant(rData)
     } catch {
       setPlans([])
     }
   }
 
   useEffect(() => { 
-    loadPlans(partnerId) 
+    loadData(partnerId) 
   }, [partnerId])
+
+  const toggleItem = (item) => {
+    setAllowedItems(prev => {
+      const exists = prev.find(i => i.name === item.name)
+      if (exists) return prev.filter(i => i.name !== item.name)
+      return [...prev, { name: item.name, price: item.price }]
+    })
+  }
 
   const createPlan = async (e) => {
     e.preventDefault()
@@ -43,14 +58,15 @@ export default function MembershipPage({ partnerId }) {
           durationDays: Number(durationDays),
           type,
           mealType,
+          allowedItems,
           benefits: benefitsText.split(',').map((b) => b.trim()).filter(Boolean)
         })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed')
       setMsg('Created')
-      setTitle(''); setPrice(''); setDurationDays(''); setBenefitsText(''); setType('subscription'); setMealType('none')
-      loadPlans(partnerId)
+      setTitle(''); setPrice(''); setDurationDays(''); setBenefitsText(''); setType('subscription'); setMealType('none'); setAllowedItems([])
+      loadData(partnerId)
       setTimeout(() => setMsg(''), 3000)
     } catch {
       setMsg('Failed')
@@ -111,6 +127,40 @@ export default function MembershipPage({ partnerId }) {
             <UiInput value={benefitsText} onChange={(e) => setBenefitsText(e.target.value)} placeholder="Free delivery, 10% off" />
           </div>
         </div>
+
+        {type === 'daily_meal' && restaurant?.menu && (
+          <div style={{ marginTop: '24px', padding: '20px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
+            <h4 style={{ marginBottom: '12px', fontSize: '14px', fontWeight: 'bold' }}>Included Menu Items (Select for this plan)</h4>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {restaurant.menu.map((item, idx) => {
+                const isSelected = allowedItems.find(i => i.name === item.name);
+                return (
+                  <button 
+                    key={idx}
+                    onClick={() => toggleItem(item)}
+                    style={{ 
+                      padding: '8px 16px', 
+                      borderRadius: 'var(--radius-full)', 
+                      fontSize: '12px',
+                      background: isSelected ? 'var(--accent)' : 'white',
+                      color: isSelected ? 'white' : 'var(--text)',
+                      border: `1px solid ${isSelected ? 'var(--accent)' : 'var(--border)'}`,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {item.name} (₹{item.price})
+                  </button>
+                )
+              })}
+            </div>
+            {allowedItems.length > 0 && (
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--muted)' }}>
+                {allowedItems.length} items selected for this daily meal plan.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="form-actions" style={{ marginTop: '24px' }}>
           <Button onClick={createPlan} size="lg">Create Membership Plan</Button>
         </div>

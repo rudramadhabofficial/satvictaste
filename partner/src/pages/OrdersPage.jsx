@@ -29,15 +29,21 @@ export default function OrdersPage({ partnerId }) {
 
   const updateStatus = async (id, status) => {
     try {
-      const res = await fetch(`${API_BASE}/api/orders/${id}/status`, {
+      const res = await fetch(`${API_BASE}/api/partner/orders/${id}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+        },
         body: JSON.stringify({ status })
       })
       if (res.ok) {
         setMsg(`Order marked as ${status}`)
         load()
         setTimeout(() => setMsg(''), 3000)
+      } else {
+        const data = await res.json()
+        setMsg(data.error || 'Failed to update status')
       }
     } catch (e) {
       setMsg('Failed to update status')
@@ -101,13 +107,24 @@ export default function OrdersPage({ partnerId }) {
                 {o.status === 'PREPARING' && (
                   <Button onClick={() => updateStatus(o.id, 'READY')} size="lg" style={{ flex: 1 }}>Mark as Ready</Button>
                 )}
+                
                 {o.status === 'READY' && (
-                  <Button onClick={() => updateStatus(o.id, 'PICKED')} size="lg" style={{ flex: 1 }}>Picked Up</Button>
+                  <div style={{ color: 'var(--muted)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
+                    Waiting for delivery partner to accept...
+                  </div>
+                )}
+                {o.status === 'ASSIGNED' && (
+                  <div style={{ color: 'var(--accent)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
+                    Delivery partner assigned! Preparing for pickup.
+                  </div>
                 )}
                 {o.status === 'PICKED' && (
-                  <Button onClick={() => updateStatus(o.id, 'DELIVERED')} size="lg" style={{ flex: 1 }}>Mark Delivered</Button>
+                  <div style={{ color: 'var(--verified)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
+                    Order picked up by delivery partner.
+                  </div>
                 )}
-                {o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && (
+
+                {o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && o.status !== 'PICKED' && (
                   <Button variant="ghost" style={{ color: 'red' }} onClick={() => updateStatus(o.id, 'CANCELLED')}>Cancel Order</Button>
                 )}
               </div>
