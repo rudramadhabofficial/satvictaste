@@ -3,7 +3,7 @@ import './index.css'
 
 const API = 'https://satvictaste.onrender.com/api'
 
-function Header({ authed, onLogout }) {
+function Header({ authed, onLogout, setTab }) {
   return (
     <header className="header">
       <div className="header-inner">
@@ -12,9 +12,10 @@ function Header({ authed, onLogout }) {
           <span className="header-title">admin.satvictaste</span>
         </div>
         <nav className="nav">
-          <a href="#approvals">Approvals</a>
-          <a href="#listings">Listings</a>
-          <a href="#partners">Partners</a>
+          <a href="#" onClick={() => setTab('overview')}>Overview</a>
+          <a href="#" onClick={() => setTab('approvals')}>Approvals</a>
+          <a href="#" onClick={() => setTab('orders')}>Orders</a>
+          <a href="#" onClick={() => setTab('delivery')}>Delivery Partners</a>
           {authed ? <button className="btn btn-ghost" onClick={onLogout}>Logout</button> : null}
         </nav>
       </div>
@@ -77,12 +78,10 @@ export default function App() {
   }
   const loadOrders = () => {
     const token = localStorage.getItem('adminToken') || ''
-    fetch(`${API}/admin/stats`) // Reuse stats or add new route. For now just stats.
+    fetch(`${API}/admin/orders`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then(r => r.json())
-      .then(d => {
-        // Since we don't have a direct "all orders" admin route yet, 
-        // I'll just show the count for now or add the route if needed.
-      })
+      .then(setOrders)
+      .catch(() => setOrders([]))
   }
   const loadIssues = () => {
     fetch(`${API}/issues`)
@@ -149,41 +148,47 @@ export default function App() {
   }
   return (
     <div className="app-wrap">
-      <Header authed={true} onLogout={logout} />
-      <main className="container">
-        <section className="hero-section">
-          <h1 className="hero-title">Admin Dashboard</h1>
-          <p className="hero-sub">Moderate listings, manage partner requests, and verify satvik claims.</p>
-        </section>
-
-        <section className="tab-bar">
-          <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Overview</button>
-          <button className={tab === 'approvals' ? 'active' : ''} onClick={() => setTab('approvals')}>Approvals</button>
-          <button className={tab === 'listings' ? 'active' : ''} onClick={() => setTab('listings')}>Listings</button>
-          <button className={tab === 'partners' ? 'active' : ''} onClick={() => setTab('partners')}>Partners</button>
-          <button className={tab === 'delivery' ? 'active' : ''} onClick={() => setTab('delivery')}>Delivery Partners</button>
-          <button className={tab === 'issues' ? 'active' : ''} onClick={() => setTab('issues')}>Issues</button>
-        </section>
-
+      <Header authed={authed} onLogout={logout} setTab={setTab} />
+      <main className="main-content">
         {message && <div className={`message ${message.startsWith('Approved') ? 'success' : 'error'}`}>{message}</div>}
 
         {tab === 'overview' && (
-          <section className="cards-section">
-            <div className="grid grid-3">
+          <section className="content-section">
+            <div className="grid grid-2">
               <div className="card">
-                <h3>Pending Approvals</h3>
-                <p className="stat">{pendingCount}</p>
-                <button type="button" className="btn btn-primary" onClick={() => setTab('approvals')}>Review</button>
+                <h3>System Overview</h3>
+                <p className="section-desc">Platform-wide statistics and activity summary.</p>
+                <div className="stats-grid">
+                  <div className="stat-card">
+                    <div className="stat-value">{restaurants.length}</div>
+                    <div className="stat-label">Verified Restaurants</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value">{partners.length}</div>
+                    <div className="stat-label">Total Submissions</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value">{deliveryPartners.length}</div>
+                    <div className="stat-label">Delivery Partners</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-value">{orders.length}</div>
+                    <div className="stat-label">Total Orders</div>
+                  </div>
+                </div>
               </div>
               <div className="card">
-                <h3>Delivery Partners</h3>
-                <p className="stat">{deliveryPartners.length}</p>
-                <button type="button" className="btn btn-primary" onClick={() => setTab('delivery')}>Manage</button>
-              </div>
-              <div className="card">
-                <h3>Restaurants</h3>
-                <p className="stat">{restaurants.length}</p>
-                <button type="button" className="btn btn-primary" onClick={() => { setTab('listings'); loadRestaurants(); }}>View</button>
+                <h3>Recent Activity</h3>
+                <ul className="partner-list">
+                  {issues.length > 0 ? issues.map(i => (
+                    <li key={i.id} className="partner-item">
+                      <div className="info">
+                        <strong>Escalation:</strong> {i.restaurantId} — {new Date(i.escalatedAt).toLocaleTimeString()}
+                      </div>
+                      <span className="status-badge status-pending">Issue</span>
+                    </li>
+                  )) : <li className="empty-state">No recent issues.</li>}
+                </ul>
               </div>
             </div>
           </section>
@@ -207,6 +212,29 @@ export default function App() {
                   ))}
                 </ul>
               )}
+            </div>
+          </section>
+        )}
+
+        {tab === 'orders' && (
+          <section className="content-section">
+            <div className="card">
+              <h3>All Orders</h3>
+              <p className="section-desc">Monitor every order placed on the platform.</p>
+              <ul className="partner-list">
+                {orders.length === 0 && <li className="empty-state">No orders yet.</li>}
+                {orders.map((o) => (
+                  <li key={o.id} className="partner-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
+                      <strong>Order #{o.id.slice(-6)}</strong>
+                      <span className={`status-badge ${o.status === 'DELIVERED' ? 'status-approved' : 'status-pending'}`}>{o.status}</span>
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
+                      Restaurant: {o.restaurantId} | Total: ₹{o.totalPrice} | {new Date(o.createdAt).toLocaleString()}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
         )}
