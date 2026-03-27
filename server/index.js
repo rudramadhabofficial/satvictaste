@@ -143,9 +143,22 @@ const partnerSubmissionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
-const PartnerSubmission =
-  mongoose.models.PartnerSubmission || mongoose.model('PartnerSubmission', partnerSubmissionSchema);
-const inMemorySubmissions = [];
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String, required: true },
+  verified: { type: Boolean, default: false },
+  partnerId: { type: String }, // Optional: Link to a restaurant if they are a partner
+  createdAt: { type: Date, default: Date.now },
+});
+
+const verificationSchema = new mongoose.Schema({
+  email: { type: String, required: true },
+  token: { type: String, required: true },
+  userData: { type: Object }, // Temp storage for signup data
+  role: { type: String, default: 'user' },
+  createdAt: { type: Date, default: Date.now, expires: 600 }, // 10 minutes expiry
+});
 
 const Restaurant = mongoose.models.Restaurant || mongoose.model('Restaurant', restaurantSchema);
 const MembershipPlan = mongoose.models.MembershipPlan || mongoose.model('MembershipPlan', membershipPlanSchema);
@@ -155,6 +168,9 @@ const Delivery = mongoose.models.Delivery || mongoose.model('Delivery', delivery
 const DeliveryPartner = mongoose.models.DeliveryPartner || mongoose.model('DeliveryPartner', deliveryPartnerSchema);
 const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema);
 const Order = mongoose.models.Order || mongoose.model('Order', orderSchema);
+const PartnerSubmission = mongoose.models.PartnerSubmission || mongoose.model('PartnerSubmission', partnerSubmissionSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+const Verification = mongoose.models.Verification || mongoose.model('Verification', verificationSchema);
 
 const inMemoryPlans = [];
 const inMemorySubs = [];
@@ -165,6 +181,7 @@ const inMemoryVerifications = [];
 const inMemoryDeliveryPartners = [];
 const inMemoryBookings = [];
 const inMemoryOrders = [];
+const inMemorySubmissions = [];
 
 function hashPassword(pw) {
   return crypto.createHash('sha256').update(String(pw)).digest('hex');
@@ -268,9 +285,12 @@ async function maybeSendEmail(to, subject, text, html) {
 }
 
 async function notifyUser(userId, subject, text) {
-  // In a real app, we'd find the user's email/phone/token
-  // For now, we'll try to find the email from inMemoryUsers or just log it
-  const user = inMemoryUsers.find(u => u.id === userId);
+  let user;
+  if (mongoose.connection.readyState === 1 && MONGO_URI) {
+    user = await User.findById(userId);
+  } else {
+    user = inMemoryUsers.find(u => u.id === userId);
+  }
   const email = user ? user.email : `user-${userId}@satvic.local`;
   await maybeSendEmail(email, subject, text);
 }
@@ -298,7 +318,13 @@ app.post('/api/auth/signup', async (req, res) => {
     if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
     
     // Check if already registered and verified
-    const existingUser = inMemoryUsers.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+    let existingUser;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      existingUser = await User.findOne({ email: email.toLowerCase() });
+    } else {
+      existingUser = inMemoryUsers.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+    }
+
     if (existingUser && existingUser.verified) {
       return res.status(400).json({ error: 'Email already registered' });
     }
@@ -307,16 +333,26 @@ app.post('/api/auth/signup', async (req, res) => {
     const token = String(Math.floor(1000 + Math.random() * 9000));
     
     // Upsert into verification (includes user data)
-    const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === String(email).toLowerCase());
-    if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
-    
-    inMemoryVerifications.push({ 
-      email: email.toLowerCase(), 
-      token, 
-      userData: { name, passwordHash: hashPassword(password) },
-      role: 'user',
-      createdAt: new Date() 
-    });
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      await Verification.findOneAndDelete({ email: email.toLowerCase() });
+      await Verification.create({ 
+        email: email.toLowerCase(), 
+        token, 
+        userData: { name, passwordHash: hashPassword(password) },
+        role: 'user'
+      });
+    } else {
+      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === String(email).toLowerCase());
+      if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+      
+      inMemoryVerifications.push({ 
+        email: email.toLowerCase(), 
+        token, 
+        userData: { name, passwordHash: hashPassword(password) },
+        role: 'user',
+        createdAt: new Date() 
+      });
+    }
     
     const html = `
       <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
@@ -341,51 +377,95 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-app.post('/api/auth/verify', (req, res) => {
+app.post('/api/auth/verify', async (req, res) => {
   try {
     const { email, token } = req.body || {};
-    const vIdx = inMemoryVerifications.findIndex((x) => x.email.toLowerCase() === String(email).toLowerCase() && x.token === token);
-    if (vIdx === -1) return res.status(400).json({ error: 'Invalid code' });
+    let verification;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      verification = await Verification.findOne({ email: email.toLowerCase(), token });
+    } else {
+      const idx = inMemoryVerifications.findIndex((x) => x.email.toLowerCase() === String(email).toLowerCase() && x.token === token);
+      if (idx !== -1) verification = inMemoryVerifications[idx];
+    }
+
+    if (!verification) return res.status(400).json({ error: 'Invalid code' });
     
-    const v = inMemoryVerifications[vIdx];
-    
-    if (v.role === 'delivery') {
-      const id = String(Date.now());
-      const dp = { id, email: v.email, name: v.userData.name, passwordHash: v.userData.passwordHash, phone: v.userData.phone, city: v.userData.city, verified: true };
-      inMemoryDeliveryPartners.push(dp);
+    if (verification.role === 'delivery') {
+      if (mongoose.connection.readyState === 1 && MONGO_URI) {
+        await DeliveryPartner.create({
+          name: verification.userData.name,
+          email: verification.email,
+          passwordHash: verification.userData.passwordHash,
+          phone: verification.userData.phone,
+          city: verification.userData.city,
+          verified: true
+        });
+        await Verification.findByIdAndDelete(verification._id);
+      } else {
+        const id = String(Date.now());
+        const dp = { id, email: verification.email, name: verification.userData.name, passwordHash: verification.userData.passwordHash, phone: verification.userData.phone, city: verification.userData.city, verified: true };
+        inMemoryDeliveryPartners.push(dp);
+        const idx = inMemoryVerifications.findIndex(v => v.email === verification.email);
+        inMemoryVerifications.splice(idx, 1);
+      }
     } else {
       // User flow
-      if (v.userData) {
-        const id = String(Date.now());
-        const user = { id, email: v.email, name: v.userData.name, passwordHash: v.userData.passwordHash, verified: true };
-        inMemoryUsers.push(user);
+      if (mongoose.connection.readyState === 1 && MONGO_URI) {
+        if (verification.userData) {
+          await User.create({
+            name: verification.userData.name,
+            email: verification.email,
+            passwordHash: verification.userData.passwordHash,
+            verified: true
+          });
+        } else {
+          await User.findOneAndUpdate({ email: verification.email }, { verified: true });
+        }
+        await Verification.findByIdAndDelete(verification._id);
       } else {
-        const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
-        if (u) u.verified = true;
+        if (verification.userData) {
+          const id = String(Date.now());
+          const user = { id, email: verification.email, name: verification.userData.name, passwordHash: verification.userData.passwordHash, verified: true };
+          inMemoryUsers.push(user);
+        } else {
+          const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+          if (u) u.verified = true;
+        }
+        const idx = inMemoryVerifications.findIndex(v => v.email === verification.email);
+        inMemoryVerifications.splice(idx, 1);
       }
     }
     
-    inMemoryVerifications.splice(vIdx, 1);
     res.json({ verified: true });
-  } catch {
+  } catch (e) {
+    console.error('Verify error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    const u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+    let u;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      u = await User.findOne({ email: email.toLowerCase() });
+    } else {
+      u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
+    }
+
     if (!u) return res.status(401).json({ error: 'Invalid credentials' });
     if (u.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Invalid credentials' });
+    
     if (!u.verified) {
-      // Re-send verification code if not verified
       const token = String(Math.floor(1000 + Math.random() * 9000));
-      // Remove old token for this email if exists
-      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === u.email.toLowerCase());
-      if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
-      
-      inMemoryVerifications.push({ email: u.email, token, role: 'user', createdAt: new Date() });
+      if (mongoose.connection.readyState === 1 && MONGO_URI) {
+        await Verification.findOneAndDelete({ email: u.email });
+        await Verification.create({ email: u.email, token, role: 'user' });
+      } else {
+        const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === u.email.toLowerCase());
+        if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+        inMemoryVerifications.push({ email: u.email, token, role: 'user', createdAt: new Date() });
+      }
       
       const html = `
         <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
@@ -401,19 +481,91 @@ app.post('/api/auth/login', (req, res) => {
       maybeSendEmail(u.email, 'SatvicTaste verification code', `Your verification code is ${token}`, html);
       return res.status(403).json({ error: 'Email not verified' });
     }
-    res.json({ token: signJwt({ sub: u.id, email: u.email, role: 'user' }), id: u.id, email: u.email, name: u.name });
-  } catch {
+    const id = u._id ? String(u._id) : u.id;
+    res.json({ token: signJwt({ sub: id, email: u.email, role: 'user' }), id, email: u.email, name: u.name });
+  } catch (e) {
+    console.error('Login error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-app.get('/api/auth/me', userAuth, (req, res) => {
-  const u = inMemoryUsers.find((x) => x.id === req.user.sub);
-  if (!u) return res.status(404).json({ error: 'Not found' });
-  res.json({ id: u.id, email: u.email, name: u.name, verified: u.verified, partnerId: u.partnerId || null });
+app.get('/api/auth/me', userAuth, async (req, res) => {
+  try {
+    let u;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      u = await User.findById(req.user.sub);
+    } else {
+      u = inMemoryUsers.find((x) => x.id === req.user.sub);
+    }
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const id = u._id ? String(u._id) : u.id;
+    res.json({ id, email: u.email, name: u.name, verified: u.verified, partnerId: u.partnerId || null });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Delivery Partner Auth
+app.post('/api/delivery-auth/signup', async (req, res) => {
+  try {
+    const { email, name, password, phone, city } = req.body || {};
+    if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
+    
+    // Check if already registered and verified
+    let existing;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      existing = await DeliveryPartner.findOne({ email: email.toLowerCase() });
+    } else {
+      existing = inMemoryDeliveryPartners.find((u) => u.email.toLowerCase() === String(email).toLowerCase());
+    }
+
+    if (existing && existing.verified) {
+      return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    const token = String(Math.floor(1000 + Math.random() * 9000));
+    
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      await Verification.findOneAndDelete({ email: email.toLowerCase() });
+      await Verification.create({ 
+        email: email.toLowerCase(), 
+        token, 
+        userData: { name, passwordHash: hashPassword(password), phone, city },
+        role: 'delivery'
+      });
+    } else {
+      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === String(email).toLowerCase());
+      if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+      
+      inMemoryVerifications.push({ 
+        email: email.toLowerCase(), 
+        token, 
+        userData: { name, passwordHash: hashPassword(password), phone, city },
+        role: 'delivery',
+        createdAt: new Date() 
+      });
+    }
+    
+    const html = `
+      <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
+        <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Welcome to Satvic Delivery</h1>
+        <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
+          To join our network of delivery partners, please verify your email with the code below:
+        </p>
+        <div style="background: #FFFFFF; border: 1px solid rgba(44, 51, 46, 0.06); border-radius: 14px; padding: 32px; margin: 32px 0; text-align: center;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #5F8B6E;">${token}</span>
+        </div>
+      </div>
+    `;
+
+    await maybeSendEmail(email, 'Verify your Satvic Delivery account', `Your verification code is ${token}`, html);
+    res.status(201).json({ email, requiresVerification: true });
+  } catch (e) {
+    console.error('Delivery signup error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Admin: Create Delivery Partner
 app.post('/api/admin/delivery-partners', adminAuth, async (req, res) => {
   try {
