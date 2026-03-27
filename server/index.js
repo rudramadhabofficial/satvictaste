@@ -269,8 +269,8 @@ async function maybeSendEmail(to, subject, text, html) {
 
       const transporter = nodemailer.createTransport({
         host: 'smtp.zoho.com',
-        port: 587,
-        secure: false, // TLS
+        port: 465,
+        secure: true, // SSL/TLS
         auth: {
           type: 'OAuth2',
           user: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
@@ -278,11 +278,11 @@ async function maybeSendEmail(to, subject, text, html) {
           clientSecret: process.env.ZOHO_CLIENT_SECRET,
           refreshToken: process.env.ZOHO_REFRESH_TOKEN,
         },
-        connectionTimeout: 10000, // 10s
-        greetingTimeout: 10000,
-        socketTimeout: 20000,
-        debug: true, // Enable debug logging
-        logger: true, // Log to console
+        connectionTimeout: 30000, // 30s
+        greetingTimeout: 30000,
+        socketTimeout: 60000,
+        debug: true,
+        logger: true,
       });
 
       const info = await transporter.sendMail({
@@ -488,9 +488,11 @@ app.post('/api/auth/signup', async (req, res) => {
     `;
 
     console.log(`[AUTH] Sending email to ${email}`);
-    await maybeSendEmail(email, 'Verify your SatvicTaste account', `Your verification code is ${token}`, html);
+    // Non-blocking email send so the user doesn't get stuck if SMTP is slow/failing
+    maybeSendEmail(email, 'Verify your SatvicTaste account', `Your verification code is ${token}`, html)
+      .catch(err => console.error(`[AUTH] background email send failed for ${email}:`, err.message));
     
-    console.log(`[AUTH] Signup response sent for ${email}`);
+    console.log(`[AUTH] Signup response sent for ${email}. User should see verification screen.`);
     res.status(201).json({ email, requiresVerification: true });
   } catch (e) {
     console.error('[AUTH] Signup error:', e);
