@@ -251,37 +251,65 @@ async function partnerAuth(req, res, next) {
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
 async function maybeSendEmail(to, subject, text, html) {
-  try {
-    console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject}`);
-    if (!process.env.ZOHO_CLIENT_ID) {
-      console.log('[EMAIL] ZOHO_CLIENT_ID missing. Check Render Env Vars.');
-      console.log('[NOTIFICATION] to:', to, '| subject:', subject, '| text:', text);
-      return;
+  const timeoutMs = 15000; // 15 seconds timeout
+  const mailPromise = (async () => {
+    try {
+      console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject}`);
+      
+      // If no credentials, just log it
+      if (!process.env.ZOHO_CLIENT_ID) {
+        console.warn('[EMAIL] ZOHO_CLIENT_ID missing. Check Render Env Vars.');
+        console.log('--- EMAIL NOTIFICATION (SIMULATED) ---');
+        console.log('To:', to);
+        console.log('Subject:', subject);
+        console.log('Body:', text);
+        console.log('--------------------------------------');
+        return true;
+      }
+
+      const transporter = nodemailer.createTransport({
+        host: 'smtp.zoho.com',
+        port: 587,
+        secure: false, // TLS
+        auth: {
+          type: 'OAuth2',
+          user: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
+          clientId: process.env.ZOHO_CLIENT_ID,
+          clientSecret: process.env.ZOHO_CLIENT_SECRET,
+          refreshToken: process.env.ZOHO_REFRESH_TOKEN,
+        },
+        connectionTimeout: 10000, // 10s
+        greetingTimeout: 10000,
+        socketTimeout: 20000,
+        debug: true, // Enable debug logging
+        logger: true, // Log to console
+      });
+
+      const info = await transporter.sendMail({
+        from: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
+        to,
+        subject,
+        text,
+        html,
+      });
+      console.log(`[EMAIL] Success! MessageId: ${info.messageId}`);
+      return true;
+    } catch (e) {
+      console.error('[EMAIL] CRITICAL FAILURE:', e.message);
+      if (e.response) console.error('[EMAIL] Zoho Response:', e.response);
+      return false;
     }
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.zoho.com',
-      port: 465,
-      secure: true,
-      auth: {
-        type: 'OAuth2',
-        user: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
-        clientId: process.env.ZOHO_CLIENT_ID,
-        clientSecret: process.env.ZOHO_CLIENT_SECRET,
-        refreshToken: process.env.ZOHO_REFRESH_TOKEN,
-      },
-    });
-    const info = await transporter.sendMail({
-      from: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
-      to,
-      subject,
-      text,
-      html,
-    });
-    console.log(`[EMAIL] Success! MessageId: ${info.messageId}`);
-  } catch (e) {
-    console.error('[EMAIL] CRITICAL FAILURE:', e.message);
-    if (e.response) console.error('[EMAIL] Zoho Response:', e.response);
-  }
+  })();
+
+  // Race between mail sending and timeout
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => {
+      console.error(`[EMAIL] Timeout after ${timeoutMs}ms for ${to}`);
+      resolve(false);
+    }, timeoutMs);
+  });
+
+  return Promise.race([mailPromise, timeoutPromise]);
 }
 
 async function notifyUser(userId, subject, text) {
@@ -330,6 +358,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     if (!u) return res.status(404).json({ error: 'User not found' });
 
     const token = String(Math.floor(1000 + Math.random() * 9000));
+    console.log(`[AUTH] Generated Reset OTP for ${email}: ${token}`);
     
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
       await Verification.findOneAndDelete({ email: email.toLowerCase() });
@@ -400,6 +429,8 @@ app.post('/api/auth/signup', async (req, res) => {
     const { email, name, password } = req.body || {};
     if (!email || !password || !name) return res.status(400).json({ error: 'name, email, password required' });
     
+    console.log(`[AUTH] Signup attempt for ${email}`);
+
     // Check if already registered and verified
     let existingUser;
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
@@ -409,14 +440,17 @@ app.post('/api/auth/signup', async (req, res) => {
     }
 
     if (existingUser && existingUser.verified) {
+      console.log(`[AUTH] Signup failed: Email ${email} already registered`);
       return res.status(400).json({ error: 'Email already registered' });
     }
 
     // Generate 4-digit token
     const token = String(Math.floor(1000 + Math.random() * 9000));
+    console.log(`[AUTH] Generated OTP for ${email}: ${token}`);
     
     // Upsert into verification (includes user data)
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      console.log(`[AUTH] Saving verification to MongoDB for ${email}`);
       await Verification.findOneAndDelete({ email: email.toLowerCase() });
       await Verification.create({ 
         email: email.toLowerCase(), 
@@ -425,6 +459,7 @@ app.post('/api/auth/signup', async (req, res) => {
         role: 'user'
       });
     } else {
+      console.log(`[AUTH] Saving verification to Memory for ${email}`);
       const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === String(email).toLowerCase());
       if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
       
@@ -452,10 +487,13 @@ app.post('/api/auth/signup', async (req, res) => {
       </div>
     `;
 
+    console.log(`[AUTH] Sending email to ${email}`);
     await maybeSendEmail(email, 'Verify your SatvicTaste account', `Your verification code is ${token}`, html);
+    
+    console.log(`[AUTH] Signup response sent for ${email}`);
     res.status(201).json({ email, requiresVerification: true });
   } catch (e) {
-    console.error('Signup error:', e);
+    console.error('[AUTH] Signup error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
