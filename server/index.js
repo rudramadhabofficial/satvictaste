@@ -312,6 +312,89 @@ async function notifyDeliveryPartner(dpId, subject, text) {
   await maybeSendEmail(email, subject, text);
 }
 
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    let u, role;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      u = await User.findOne({ email: email.toLowerCase() });
+      if (!u) u = await DeliveryPartner.findOne({ email: email.toLowerCase() });
+      // Also check if they are a restaurant owner via User model (partnerId field)
+    } else {
+      u = inMemoryUsers.find(x => x.email.toLowerCase() === email.toLowerCase());
+      if (!u) u = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === email.toLowerCase());
+    }
+
+    if (!u) return res.status(404).json({ error: 'User not found' });
+
+    const token = String(Math.floor(1000 + Math.random() * 9000));
+    
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      await Verification.findOneAndDelete({ email: email.toLowerCase() });
+      await Verification.create({ email: email.toLowerCase(), token, role: 'reset' });
+    } else {
+      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === email.toLowerCase());
+      if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
+      inMemoryVerifications.push({ email: email.toLowerCase(), token, role: 'reset', createdAt: new Date() });
+    }
+
+    const html = `
+      <div style="font-family: 'Fraunces', Georgia, serif; max-width: 600px; margin: 0 auto; padding: 40px; background: #FAF9F6; border-radius: 20px;">
+        <h1 style="color: #161B18; font-size: 28px; text-align: center; margin-bottom: 24px;">Reset your Password</h1>
+        <p style="color: #5A655E; font-size: 16px; line-height: 1.6; text-align: center;">
+          We received a request to reset your password. Use the code below to proceed:
+        </p>
+        <div style="background: #FFFFFF; border: 1px solid rgba(44, 51, 46, 0.06); border-radius: 14px; padding: 32px; margin: 32px 0; text-align: center;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #5F8B6E;">${token}</span>
+        </div>
+      </div>
+    `;
+    await maybeSendEmail(email, 'Reset your SatvicTaste password', `Your reset code is ${token}`, html);
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body || {};
+    if (!email || !token || !newPassword) return res.status(400).json({ error: 'All fields required' });
+
+    let verification;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      verification = await Verification.findOne({ email: email.toLowerCase(), token, role: 'reset' });
+    } else {
+      verification = inMemoryVerifications.find(v => v.email.toLowerCase() === email.toLowerCase() && v.token === token && v.role === 'reset');
+    }
+
+    if (!verification) return res.status(400).json({ error: 'Invalid or expired code' });
+
+    const passwordHash = hashPassword(newPassword);
+
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      let u = await User.findOneAndUpdate({ email: email.toLowerCase() }, { passwordHash });
+      if (!u) await DeliveryPartner.findOneAndUpdate({ email: email.toLowerCase() }, { passwordHash });
+      await Verification.findByIdAndDelete(verification._id);
+    } else {
+      let u = inMemoryUsers.find(x => x.email.toLowerCase() === email.toLowerCase());
+      if (u) u.passwordHash = passwordHash;
+      else {
+        let dp = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === email.toLowerCase());
+        if (dp) dp.passwordHash = passwordHash;
+      }
+      const idx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === email.toLowerCase());
+      inMemoryVerifications.splice(idx, 1);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, name, password } = req.body || {};
