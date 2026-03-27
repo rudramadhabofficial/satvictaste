@@ -252,20 +252,27 @@ async function partnerAuth(req, res, next) {
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
 async function getZohoAccessToken() {
-  try {
-    const resp = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
-      params: {
-        refresh_token: process.env.ZOHO_REFRESH_TOKEN,
-        client_id: process.env.ZOHO_CLIENT_ID,
-        client_secret: process.env.ZOHO_CLIENT_SECRET,
-        grant_type: 'refresh_token',
-      },
-    });
-    return resp.data.access_token;
-  } catch (e) {
-    console.error('[EMAIL] Failed to refresh Zoho token:', e.response?.data || e.message);
-    return null;
+  const regions = ['in', 'com']; // Priority to .in for India
+  for (const region of regions) {
+    try {
+      console.log(`[EMAIL] Attempting to refresh token for region: ${region}`);
+      const resp = await axios.post(`https://accounts.zoho.${region}/oauth/v2/token`, null, {
+        params: {
+          refresh_token: process.env.ZOHO_REFRESH_TOKEN,
+          client_id: process.env.ZOHO_CLIENT_ID,
+          client_secret: process.env.ZOHO_CLIENT_SECRET,
+          grant_type: 'refresh_token',
+        },
+      });
+      if (resp.data.access_token) {
+        console.log(`[EMAIL] Token refresh successful for region: ${region}`);
+        return { token: resp.data.access_token, region };
+      }
+    } catch (e) {
+      console.warn(`[EMAIL] Failed refresh for region ${region}:`, e.response?.data || e.message);
+    }
   }
+  return null;
 }
 
 async function maybeSendEmail(to, subject, text, html) {
@@ -274,22 +281,18 @@ async function maybeSendEmail(to, subject, text, html) {
     
     if (!process.env.ZOHO_CLIENT_ID || !process.env.ZOHO_ACCOUNT_ID) {
       console.warn('[EMAIL] ZOHO credentials missing. Check Render Env Vars.');
-      console.log('--- EMAIL NOTIFICATION (SIMULATED) ---');
-      console.log('To:', to);
-      console.log('Subject:', subject);
-      console.log('Body:', text);
-      console.log('--------------------------------------');
       return true;
     }
 
-    const accessToken = await getZohoAccessToken();
-    if (!accessToken) throw new Error('Could not get access token');
+    const authData = await getZohoAccessToken();
+    if (!authData) throw new Error('Could not get access token from any Zoho region (.in or .com)');
 
+    const { token, region } = authData;
     const accountId = process.env.ZOHO_ACCOUNT_ID;
     const fromAddress = process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com';
 
     const resp = await axios.post(
-      `https://mail.zoho.com/api/accounts/${accountId}/messages`,
+      `https://mail.zoho.${region}/api/accounts/${accountId}/messages`,
       {
         fromAddress,
         toAddress: to,
@@ -299,18 +302,17 @@ async function maybeSendEmail(to, subject, text, html) {
       },
       {
         headers: {
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
+          'Authorization': `Zoho-oauthtoken ${token}`,
           'Content-Type': 'application/json'
         }
       }
     );
 
-    console.log(`[EMAIL] Success! Zoho API Response Status: ${resp.status}`);
+    console.log(`[EMAIL] Success! Zoho API (${region}) Response Status: ${resp.status}`);
     return true;
   } catch (e) {
     console.error('[EMAIL] REST API FAILURE:', e.response?.data || e.message);
-    // If API fails, fall back to logging the OTP in production logs so user isn't stuck
-    console.log(`[AUTH-FALLBACK] Failed to send email to ${to}. Subject: ${subject}. Content: ${text}`);
+    console.log(`[AUTH-FALLBACK] OTP for ${to}: ${text}`);
     return false;
   }
 }
