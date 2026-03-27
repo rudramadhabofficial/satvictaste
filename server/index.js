@@ -8,6 +8,7 @@ const streamifier = require('streamifier');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const app = express();
 app.use(cors());
@@ -250,66 +251,68 @@ async function partnerAuth(req, res, next) {
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@satvictaste.com';
 
+async function getZohoAccessToken() {
+  try {
+    const resp = await axios.post('https://accounts.zoho.com/oauth/v2/token', null, {
+      params: {
+        refresh_token: process.env.ZOHO_REFRESH_TOKEN,
+        client_id: process.env.ZOHO_CLIENT_ID,
+        client_secret: process.env.ZOHO_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+      },
+    });
+    return resp.data.access_token;
+  } catch (e) {
+    console.error('[EMAIL] Failed to refresh Zoho token:', e.response?.data || e.message);
+    return null;
+  }
+}
+
 async function maybeSendEmail(to, subject, text, html) {
-  const timeoutMs = 15000; // 15 seconds timeout
-  const mailPromise = (async () => {
-    try {
-      console.log(`[EMAIL] Attempting to send to: ${to} | Subject: ${subject}`);
-      
-      // If no credentials, just log it
-      if (!process.env.ZOHO_CLIENT_ID) {
-        console.warn('[EMAIL] ZOHO_CLIENT_ID missing. Check Render Env Vars.');
-        console.log('--- EMAIL NOTIFICATION (SIMULATED) ---');
-        console.log('To:', to);
-        console.log('Subject:', subject);
-        console.log('Body:', text);
-        console.log('--------------------------------------');
-        return true;
-      }
-
-      const transporter = nodemailer.createTransport({
-        host: 'smtp.zoho.com',
-        port: 465,
-        secure: true, // SSL/TLS
-        auth: {
-          type: 'OAuth2',
-          user: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
-          clientId: process.env.ZOHO_CLIENT_ID,
-          clientSecret: process.env.ZOHO_CLIENT_SECRET,
-          refreshToken: process.env.ZOHO_REFRESH_TOKEN,
-        },
-        connectionTimeout: 30000, // 30s
-        greetingTimeout: 30000,
-        socketTimeout: 60000,
-        debug: true,
-        logger: true,
-      });
-
-      const info = await transporter.sendMail({
-        from: process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com',
-        to,
-        subject,
-        text,
-        html,
-      });
-      console.log(`[EMAIL] Success! MessageId: ${info.messageId}`);
+  try {
+    console.log(`[EMAIL] Attempting to send via API to: ${to} | Subject: ${subject}`);
+    
+    if (!process.env.ZOHO_CLIENT_ID || !process.env.ZOHO_ACCOUNT_ID) {
+      console.warn('[EMAIL] ZOHO credentials missing. Check Render Env Vars.');
+      console.log('--- EMAIL NOTIFICATION (SIMULATED) ---');
+      console.log('To:', to);
+      console.log('Subject:', subject);
+      console.log('Body:', text);
+      console.log('--------------------------------------');
       return true;
-    } catch (e) {
-      console.error('[EMAIL] CRITICAL FAILURE:', e.message);
-      if (e.response) console.error('[EMAIL] Zoho Response:', e.response);
-      return false;
     }
-  })();
 
-  // Race between mail sending and timeout
-  const timeoutPromise = new Promise((resolve) => {
-    setTimeout(() => {
-      console.error(`[EMAIL] Timeout after ${timeoutMs}ms for ${to}`);
-      resolve(false);
-    }, timeoutMs);
-  });
+    const accessToken = await getZohoAccessToken();
+    if (!accessToken) throw new Error('Could not get access token');
 
-  return Promise.race([mailPromise, timeoutPromise]);
+    const accountId = process.env.ZOHO_ACCOUNT_ID;
+    const fromAddress = process.env.ZOHO_MAIL_FROM || 'noreply@satvictaste.com';
+
+    const resp = await axios.post(
+      `https://mail.zoho.com/api/accounts/${accountId}/messages`,
+      {
+        fromAddress,
+        toAddress: to,
+        subject,
+        content: html || text,
+        mailFormat: html ? 'html' : 'text'
+      },
+      {
+        headers: {
+          'Authorization': `Zoho-oauthtoken ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`[EMAIL] Success! Zoho API Response Status: ${resp.status}`);
+    return true;
+  } catch (e) {
+    console.error('[EMAIL] REST API FAILURE:', e.response?.data || e.message);
+    // If API fails, fall back to logging the OTP in production logs so user isn't stuck
+    console.log(`[AUTH-FALLBACK] Failed to send email to ${to}. Subject: ${subject}. Content: ${text}`);
+    return false;
+  }
 }
 
 async function notifyUser(userId, subject, text) {
