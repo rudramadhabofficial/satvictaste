@@ -212,6 +212,7 @@ function LandingPage({ onLogin }) {
       <Footer />
     </div>
   )
+}
 
 function Footer() {
   return (
