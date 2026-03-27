@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react'
 import './index.css'
+import { useToast } from './components/ui/toast'
+import { 
+  LayoutDashboard, 
+  CheckCircle, 
+  ShoppingBag, 
+  Truck, 
+  AlertTriangle, 
+  LogOut, 
+  Menu,
+  ChevronRight,
+  MapPin,
+  Phone,
+  Clock,
+  IndianRupee
+} from 'lucide-react'
 
 const API = (import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com') + '/api'
 
-function Header({ authed, onLogout, setTab }) {
+function Header({ authed, onLogout, setTab, activeTab }) {
   return (
     <header className="header">
       <div className="header-inner">
@@ -12,11 +27,17 @@ function Header({ authed, onLogout, setTab }) {
           <span className="header-title">admin.satvictaste</span>
         </div>
         <nav className="nav">
-          <a href="#" onClick={() => setTab('overview')}>Overview</a>
-          <a href="#" onClick={() => setTab('approvals')}>Approvals</a>
-          <a href="#" onClick={() => setTab('orders')}>Orders</a>
-          <a href="#" onClick={() => setTab('delivery')}>Delivery Partners</a>
-          {authed ? <button className="btn btn-ghost" onClick={onLogout}>Logout</button> : null}
+          <span className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</span>
+          <span className={`nav-link ${activeTab === 'restaurants' ? 'active' : ''}`} onClick={() => setTab('restaurants')}>Restaurants</span>
+          <span className={`nav-link ${activeTab === 'approvals' ? 'active' : ''}`} onClick={() => setTab('approvals')}>Approvals</span>
+          <span className={`nav-link ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>Orders</span>
+          <span className={`nav-link ${activeTab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>Delivery</span>
+          {authed ? (
+            <button className="btn btn-ghost" onClick={onLogout}>
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
+          ) : null}
         </nav>
       </div>
     </header>
@@ -24,13 +45,25 @@ function Header({ authed, onLogout, setTab }) {
 }
 
 export default function App() {
+  const { addToast } = useToast()
   const [authed, setAuthed] = useState(false)
   const [pass, setPass] = useState('')
+  const [tab, setTab] = useState('overview')
+  const [partners, setPartners] = useState([])
+  const [restaurants, setRestaurants] = useState([])
+  const [deliveryPartners, setDeliveryPartners] = useState([])
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [issues, setIssues] = useState([])
+
   useEffect(() => {
     const t = localStorage.getItem('adminToken')
     if (t) setAuthed(true)
   }, [])
+
   const login = () => {
+    if (!pass) return addToast('Please enter passcode', 'error')
+    
     fetch(`${API.replace('/api','')}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -40,20 +73,17 @@ export default function App() {
       if (!r.ok) throw new Error(data?.error || 'Login failed')
       localStorage.setItem('adminToken', data.token)
       setAuthed(true)
-    }).catch(() => {})
+      addToast('Welcome back, Admin', 'success')
+    }).catch((err) => {
+      addToast(err.message, 'error')
+    })
   }
+
   const logout = () => {
     localStorage.removeItem('adminToken')
     setAuthed(false)
+    addToast('Logged out successfully', 'info')
   }
-  const [tab, setTab] = useState('overview')
-  const [partners, setPartners] = useState([])
-  const [restaurants, setRestaurants] = useState([])
-  const [deliveryPartners, setDeliveryPartners] = useState([])
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [issues, setIssues] = useState([])
 
   const loadPartners = () => {
     setLoading(true)
@@ -63,12 +93,14 @@ export default function App() {
       .catch(() => setPartners([]))
       .finally(() => setLoading(false))
   }
+
   const loadRestaurants = () => {
     fetch(`${API}/restaurants`)
       .then((r) => r.json())
       .then(setRestaurants)
       .catch(() => setRestaurants([]))
   }
+
   const loadDeliveryPartners = () => {
     const token = localStorage.getItem('adminToken') || ''
     fetch(`${API}/admin/delivery-partners`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -76,6 +108,7 @@ export default function App() {
       .then(setDeliveryPartners)
       .catch(() => setDeliveryPartners([]))
   }
+
   const loadOrders = () => {
     const token = localStorage.getItem('adminToken') || ''
     fetch(`${API}/admin/orders`, { headers: { 'Authorization': `Bearer ${token}` } })
@@ -83,6 +116,7 @@ export default function App() {
       .then(setOrders)
       .catch(() => setOrders([]))
   }
+
   const loadIssues = () => {
     fetch(`${API}/issues`)
       .then((r) => r.json())
@@ -91,232 +125,345 @@ export default function App() {
   }
 
   useEffect(() => {
-    loadPartners()
-    loadRestaurants()
-    loadDeliveryPartners()
-    loadIssues()
-  }, [])
-  useEffect(() => {
-    if (tab === 'partners' || tab === 'approvals') loadPartners()
-    if (tab === 'listings') loadRestaurants()
-    if (tab === 'delivery') loadDeliveryPartners()
-    if (tab === 'issues') loadIssues()
-  }, [tab])
+    if (authed) {
+      loadPartners()
+      loadRestaurants()
+      loadDeliveryPartners()
+      loadIssues()
+      loadOrders()
+    }
+  }, [authed])
 
-  const pendingCount = partners.filter((p) => p.status === 'pending').length
+  useEffect(() => {
+    if (!authed) return
+    if (tab === 'approvals') loadPartners()
+    if (tab === 'delivery') loadDeliveryPartners()
+    if (tab === 'orders') loadOrders()
+  }, [tab, authed])
 
   const handleApprove = async (id) => {
-    setMessage('')
     try {
       const token = localStorage.getItem('adminToken') || ''
-      const res = await fetch(`${API}/partners/${id}/approve`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } })
+      const res = await fetch(`${API}/partners/${id}/approve`, { 
+        method: 'POST', 
+        headers: { 'Authorization': `Bearer ${token}` } 
+      })
       if (!res.ok) throw new Error('Approve failed')
       const data = await res.json()
-      setMessage(`Approved. Restaurant ID: ${data.restaurantId || data.id}`)
+      addToast(`Approved! Restaurant ID: ${data.restaurantId || data.id}`, 'success')
       loadPartners()
       loadRestaurants()
     } catch (e) {
-      setMessage(e.message || 'Failed to approve')
+      addToast(e.message || 'Failed to approve', 'error')
     }
   }
 
   if (!authed) {
     return (
       <div className="app-wrap">
-        <Header authed={false} onLogout={() => {}} />
-        <main className="container">
-          <section className="hero-section">
-            <h1 className="hero-title">Admin Login</h1>
-            <p className="hero-sub">Enter passcode to access dashboard.</p>
-          </section>
-          <section className="content-section">
-            <div className="card">
-              <div className="grid grid-3">
-                <div>
-                  <label>Passcode</label>
-                  <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} />
-                </div>
-                <div style={{ alignSelf: 'end' }}>
-                  <button type="button" className="btn btn-primary" onClick={login}>Login</button>
-                </div>
+        <Header authed={false} onLogout={() => {}} activeTab="" />
+        <main className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1 }}>
+          <div className="premium-card" style={{ maxWidth: '400px', width: '100%' }}>
+            <h1 style={{ marginBottom: '8px', textAlign: 'center' }}>Admin Access</h1>
+            <p style={{ color: 'var(--muted)', textAlign: 'center', marginBottom: '24px' }}>Enter secure passcode to continue.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Passcode</label>
+                <input 
+                  type="password" 
+                  value={pass} 
+                  onChange={(e) => setPass(e.target.value)} 
+                  onKeyPress={(e) => e.key === 'Enter' && login()}
+                  placeholder="••••••••"
+                />
               </div>
+              <button type="button" className="btn btn-primary" onClick={login} style={{ width: '100%', justifyContent: 'center' }}>
+                Login to Dashboard
+              </button>
             </div>
-          </section>
+          </div>
         </main>
       </div>
     )
   }
+
   return (
     <div className="app-wrap">
-      <Header authed={authed} onLogout={logout} setTab={setTab} />
-      <main className="main-content">
-        {message && <div className={`message ${message.startsWith('Approved') ? 'success' : 'error'}`}>{message}</div>}
-
+      <Header authed={authed} onLogout={logout} setTab={setTab} activeTab={tab} />
+      <main className="container fade-in">
+        
         {tab === 'overview' && (
-          <section className="content-section">
-            <div className="grid grid-2">
-              <div className="card">
-                <h3>System Overview</h3>
-                <p className="section-desc">Platform-wide statistics and activity summary.</p>
-                <div className="stats-grid">
-                  <div className="stat-card">
-                    <div className="stat-value">{restaurants.length}</div>
-                    <div className="stat-label">Verified Restaurants</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{partners.length}</div>
-                    <div className="stat-label">Total Submissions</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{deliveryPartners.length}</div>
-                    <div className="stat-label">Delivery Partners</div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-value">{orders.length}</div>
-                    <div className="stat-label">Total Orders</div>
-                  </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Dashboard Overview</h2>
+              <p style={{ color: 'var(--muted)' }}>Real-time platform metrics and activity.</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '12px', background: 'var(--accent-soft)', borderRadius: '12px', color: 'var(--accent)' }}>
+                  <LayoutDashboard size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{restaurants.length}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Restaurants</div>
                 </div>
               </div>
-              <div className="card">
-                <h3>Recent Activity</h3>
-                <ul className="partner-list">
-                  {issues.length > 0 ? issues.map(i => (
-                    <li key={i.id} className="partner-item">
-                      <div className="info">
-                        <strong>Escalation:</strong> {i.restaurantId} — {new Date(i.escalatedAt).toLocaleTimeString()}
-                      </div>
-                      <span className="status-badge status-pending">Issue</span>
-                    </li>
-                  )) : <li className="empty-state">No recent issues.</li>}
-                </ul>
+              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '12px', color: '#b45309' }}>
+                  <ShoppingBag size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{orders.length}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Total Orders</div>
+                </div>
+              </div>
+              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '12px', background: 'var(--verified-bg)', borderRadius: '12px', color: 'var(--verified)' }}>
+                  <Truck size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{deliveryPartners.length}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Delivery Partners</div>
+                </div>
+              </div>
+              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '12px', background: '#fef2f2', borderRadius: '12px', color: '#b91c1c' }}>
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{issues.length}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Issues</div>
+                </div>
               </div>
             </div>
-          </section>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+              <div className="premium-card">
+                <h3 style={{ marginBottom: '20px' }}>Verified Restaurants</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Restaurant</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {restaurants.length === 0 ? (
+                        <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--muted)' }}>No restaurants found</td></tr>
+                      ) : (
+                        restaurants.slice(0, 5).map(r => (
+                          <tr key={r._id}>
+                            <td style={{ fontWeight: '600' }}>{r.name}</td>
+                            <td>{r.city}, {r.area}</td>
+                            <td><span className="badge badge-active">Active</span></td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              
+              <div className="premium-card">
+                <h3 style={{ marginBottom: '20px' }}>Active Issues</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {issues.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>No active issues</div>
+                  ) : (
+                    issues.map(i => (
+                      <div key={i.id} style={{ padding: '12px', background: 'var(--bg-subtle)', borderRadius: '8px', fontSize: '13px' }}>
+                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Delay: {i.restaurantId}</div>
+                        <div style={{ color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} />
+                          {new Date(i.escalatedAt).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {tab === 'restaurants' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Verified Restaurants</h2>
+              <p style={{ color: 'var(--muted)' }}>Manage all live restaurant listings on the platform.</p>
+            </div>
+            
+            <div className="premium-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Restaurant</th>
+                      <th>Location</th>
+                      <th>Contact</th>
+                      <th>Type</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {restaurants.length === 0 ? (
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No verified restaurants found</td></tr>
+                    ) : (
+                      restaurants.map(r => (
+                        <tr key={r._id}>
+                          <td style={{ fontWeight: '600' }}>{r.name}</td>
+                          <td>{r.city}, {r.area}</td>
+                          <td>{r.phone}</td>
+                          <td><span className="tag">{r.satvikType}</span></td>
+                          <td><span className="badge badge-active">Active</span></td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
 
         {tab === 'approvals' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>Pending approvals</h3>
-              <p className="section-desc">Approve partner submissions to add them as verified restaurants on the platform.</p>
-              {loading ? <p className="loading-state">Loading…</p> : (
-                <ul className="partner-list">
-                  {partners.filter((p) => p.status === 'pending').length === 0 && <li className="empty-state">No pending submissions. New partner requests will appear here.</li>}
-                  {partners.filter((p) => p.status === 'pending').map((p) => (
-                    <li key={p.id} className="partner-item">
-                      <div className="info">
-                        <strong>{p.profile?.name}</strong> — {p.profile?.city}, {p.profile?.phone}
-                      </div>
-                      <button type="button" className="btn btn-primary" onClick={() => handleApprove(p.id)}>Approve &amp; publish</button>
-                    </li>
-                  ))}
-                </ul>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Pending Approvals</h2>
+              <p style={{ color: 'var(--muted)' }}>Review and approve new restaurant partner submissions.</p>
+            </div>
+            
+            <div className="premium-card">
+              {loading ? (
+                <div style={{ padding: '40px', textAlign: 'center' }}>Loading submissions...</div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Partner Name</th>
+                        <th>Contact</th>
+                        <th>Location</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partners.filter(p => p.status === 'pending').length === 0 ? (
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No pending approvals</td></tr>
+                      ) : (
+                        partners.filter(p => p.status === 'pending').map(p => (
+                          <tr key={p.id}>
+                            <td style={{ fontWeight: '600' }}>{p.profile?.name}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={14} /> {p.profile?.phone}</div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={14} /> {p.profile?.city}</div>
+                            </td>
+                            <td>
+                              <button className="btn btn-primary" onClick={() => handleApprove(p.id)}>
+                                <CheckCircle size={16} />
+                                Approve
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
-          </section>
+          </div>
         )}
 
         {tab === 'orders' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>All Orders</h3>
-              <p className="section-desc">Monitor every order placed on the platform.</p>
-              <ul className="partner-list">
-                {orders.length === 0 && <li className="empty-state">No orders yet.</li>}
-                {orders.map((o) => (
-                  <li key={o.id} className="partner-item" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
-                      <strong>Order #{o.id.slice(-6)}</strong>
-                      <span className={`status-badge ${o.status === 'DELIVERED' ? 'status-approved' : 'status-pending'}`}>{o.status}</span>
-                    </div>
-                    <div style={{ fontSize: '13px', color: 'var(--muted)' }}>
-                      Restaurant: {o.restaurantId} | Total: ₹{o.totalPrice} | {new Date(o.createdAt).toLocaleString()}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Order Management</h2>
+              <p style={{ color: 'var(--muted)' }}>Track all orders and delivery progress.</p>
             </div>
-          </section>
+
+            <div className="premium-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.length === 0 ? (
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No orders found</td></tr>
+                    ) : (
+                      orders.map(o => (
+                        <tr key={o.id}>
+                          <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
+                          <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                          <td style={{ fontWeight: '600' }}>₹{o.totalPrice}</td>
+                          <td>
+                            <span className={`badge ${o.status === 'DELIVERED' ? 'badge-active' : 'badge-pending'}`}>
+                              {o.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         )}
 
-        {tab === 'listings' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>Listings</h3>
-              <p className="section-desc">Verified restaurants visible to users on the platform.</p>
-              <ul className="partner-list">
-                {restaurants.length === 0 && !loading && <li className="empty-state">No restaurants yet. Approve a partner submission to add one.</li>}
-                {restaurants.map((r) => (
-                  <li key={r._id} className="partner-item">
-                    <div className="info">
-                      <strong>{r.name}</strong> — {r.city}{r.area ? `, ${r.area}` : ''} {r.verified ? <span className="status-badge status-approved">Verified</span> : ''}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </section>
-        )}
-
-        {tab === 'partners' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>Partners</h3>
-              <p className="section-desc">All partner submissions and their approval status.</p>
-              {loading ? <p className="loading-state">Loading…</p> : (
-                <ul className="partner-list">
-                  {partners.length === 0 && <li className="empty-state">No submissions yet. Partner sign-ups will appear here.</li>}
-                  {partners.map((p) => (
-                    <li key={p.id} className="partner-item">
-                      <div className="info">
-                        <strong>{p.profile?.name}</strong> — {p.profile?.city} — <span className={`status-badge ${p.status === 'approved' ? 'status-approved' : 'status-pending'}`}>{p.status}</span>
-                      </div>
-                      {p.status === 'pending' && <button type="button" className="btn btn-primary" onClick={() => handleApprove(p.id)}>Approve</button>}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        )}
         {tab === 'delivery' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>Delivery Partners</h3>
-              <p className="section-desc">Manage all delivery partners registered on the platform.</p>
-              <ul className="partner-list">
-                {deliveryPartners.length === 0 && <li className="empty-state">No delivery partners yet.</li>}
-                {deliveryPartners.map((dp) => (
-                  <li key={dp.id} className="partner-item">
-                    <div className="info">
-                      <strong>{dp.name}</strong> — {dp.email} — {dp.city}
-                      {dp.verified ? <span className="status-badge status-approved" style={{ marginLeft: '10px' }}>Verified</span> : <span className="status-badge status-pending" style={{ marginLeft: '10px' }}>Pending</span>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div>
+              <h2 style={{ marginBottom: '8px' }}>Delivery Partners</h2>
+              <p style={{ color: 'var(--muted)' }}>Manage your delivery fleet.</p>
             </div>
-          </section>
-        )}
-        {tab === 'issues' && (
-          <section className="content-section">
-            <div className="card">
-              <h3>Escalated Issues</h3>
-              <p className="section-desc">Deliveries not marked done within 30 minutes.</p>
-              <ul className="partner-list">
-                {issues.length === 0 && <li className="empty-state">No issues</li>}
-                {issues.map((i) => (
-                  <li key={i.id} className="partner-item">
-                    <div className="info">
-                      <strong>{i.restaurantId}</strong> — User {i.userId} — {new Date(i.escalatedAt).toLocaleString()}
-                    </div>
-                    <span className="status-badge status-pending">Escalated</span>
-                  </li>
-                ))}
-              </ul>
+
+            <div className="premium-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Partner Name</th>
+                      <th>Email</th>
+                      <th>City</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deliveryPartners.length === 0 ? (
+                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No delivery partners found</td></tr>
+                    ) : (
+                      deliveryPartners.map(dp => (
+                        <tr key={dp.id}>
+                          <td style={{ fontWeight: '600' }}>{dp.name}</td>
+                          <td>{dp.email}</td>
+                          <td>{dp.city}</td>
+                          <td>
+                            <span className={`badge ${dp.verified ? 'badge-active' : 'badge-pending'}`}>
+                              {dp.verified ? 'Verified' : 'Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </section>
+          </div>
         )}
+
       </main>
     </div>
   )

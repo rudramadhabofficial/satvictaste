@@ -381,9 +381,12 @@ export default function RestaurantDetailPage({ onAddToCart }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <div style={{ position: 'relative', height: '400px', overflow: 'hidden' }}>
+      <div style={{ position: 'relative', height: '500px', overflow: 'hidden' }}>
         {restaurant.coverImage ? (
-          <img 
+          <motion.img 
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 1.5, ease: 'easeOut' }}
             src={restaurant.coverImage} 
             alt={restaurant.name} 
             style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
@@ -394,93 +397,112 @@ export default function RestaurantDetailPage({ onAddToCart }) {
         <div style={{ 
           position: 'absolute', 
           inset: 0, 
-          background: 'linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.6))' 
+          background: 'linear-gradient(to bottom, rgba(26, 31, 28, 0.1) 0%, rgba(26, 31, 28, 0.8) 100%)' 
         }} />
         
-        <div className="container" style={{ position: 'absolute', top: '24px', left: 0, right: 0 }}>
+        <div className="container" style={{ position: 'absolute', top: '100px', left: 0, right: 0 }}>
           <button 
             onClick={() => navigate(-1)} 
             className="btn glass" 
-            style={{ padding: '8px 16px', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ padding: '10px 20px', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: '8px', border: 'none' }}
           >
-            <ArrowLeft size={18} /> Back
+            <ArrowLeft size={18} /> Back to Discovery
           </button>
         </div>
         
-        <div className="container" style={{ position: 'absolute', bottom: '40px', left: 0, right: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '24px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <h1 style={{ color: 'white', fontSize: 'clamp(24px, 5vw, 40px)', fontWeight: 'bold' }}>{restaurant.name}</h1>
+        <div className="container" style={{ position: 'absolute', bottom: '60px', left: 0, right: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '32px' }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}
+              >
+                <h1 style={{ color: 'white', fontSize: 'clamp(32px, 6vw, 56px)', fontWeight: 'bold', letterSpacing: '-0.02em' }}>{restaurant.name}</h1>
                 {restaurant.verified && <VerifiedBadge />}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', color: 'rgba(255,255,255,0.9)', fontSize: '15px' }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={16} /> {restaurant.address}, {restaurant.city}</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Clock size={16} /> {restaurant.bestTimeToVisit || '11am - 10pm'}</span>
-              </div>
+              </motion.div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', color: 'rgba(255,255,255,0.9)', fontSize: '16px', fontWeight: '500' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} className="text-accent" /> {restaurant.address}, {restaurant.city}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Clock size={18} className="text-accent" /> {restaurant.bestTimeToVisit || 'Satvic Timings'}</span>
+              </motion.div>
             </div>
             
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              style={{ display: 'flex', gap: '16px' }}
+            >
               {restaurant.phone && (
-                <a href={`tel:${restaurant.phone}`} className="btn glass" style={{ color: 'white' }}>
-                  <Phone size={18} />
+                <a href={`tel:${restaurant.phone}`} className="btn glass" style={{ width: '56px', height: '56px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-strong)', border: 'none' }}>
+                  <Phone size={22} />
                 </a>
               )}
               {restaurant.whatsapp && (
-                <a href={`https://wa.me/${restaurant.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="btn glass" style={{ color: 'white' }}>
-                  <MessageCircle size={18} />
+                <a href={`https://wa.me/${restaurant.whatsapp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="btn glass" style={{ width: '56px', height: '56px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-strong)', border: 'none' }}>
+                  <MessageCircle size={22} />
                 </a>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
 
-      <div className="container" style={{ marginTop: '-30px', position: 'relative', zIndex: 10 }}>
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
+      <div className="container" style={{ marginTop: '-40px', position: 'relative', zIndex: 10, paddingBottom: '100px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '48px' }}>
           <div className="main-content">
-            <div className="premium-card" style={{ padding: '0', background: 'white', overflow: 'hidden', marginBottom: '40px' }}>
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
+            <div className="premium-card" style={{ padding: '0', background: 'white', overflow: 'hidden', marginBottom: '48px', border: 'none', boxShadow: 'var(--shadow-medium)' }}>
+              <div style={{ display: 'flex', background: 'var(--bg-subtle)', padding: '8px' }}>
                 <button 
                   onClick={() => setActiveTab('menu')}
                   style={{ 
-                    flex: 1, padding: '20px', fontSize: '15px', fontWeight: '600',
-                    borderBottom: activeTab === 'menu' ? '2px solid var(--accent)' : 'none',
+                    flex: 1, padding: '16px', fontSize: '15px', fontWeight: 'bold',
+                    borderRadius: 'var(--radius)',
+                    background: activeTab === 'menu' ? 'white' : 'transparent',
                     color: activeTab === 'menu' ? 'var(--accent)' : 'var(--muted)',
-                    background: activeTab === 'menu' ? 'var(--accent-soft)' : 'transparent'
+                    boxShadow: activeTab === 'menu' ? 'var(--shadow-subtle)' : 'none',
+                    transition: 'all 0.3s ease'
                   }}
                 >
-                  Menu Highlights
+                  Curated Menu
                 </button>
                 <button 
                   onClick={() => setActiveTab('story')}
                   style={{ 
-                    flex: 1, padding: '20px', fontSize: '15px', fontWeight: '600',
-                    borderBottom: activeTab === 'story' ? '2px solid var(--accent)' : 'none',
+                    flex: 1, padding: '16px', fontSize: '15px', fontWeight: 'bold',
+                    borderRadius: 'var(--radius)',
+                    background: activeTab === 'story' ? 'white' : 'transparent',
                     color: activeTab === 'story' ? 'var(--accent)' : 'var(--muted)',
-                    background: activeTab === 'story' ? 'var(--accent-soft)' : 'transparent'
+                    boxShadow: activeTab === 'story' ? 'var(--shadow-subtle)' : 'none',
+                    transition: 'all 0.3s ease'
                   }}
                 >
-                  Our Story
+                  Kitchen Story
                 </button>
               </div>
               
-              <div style={{ padding: '32px' }}>
+              <div style={{ padding: '48px' }}>
                 {activeTab === 'menu' && (
-                  <div style={{ display: 'grid', gap: '24px' }}>
+                  <div style={{ display: 'grid', gap: '32px' }}>
                     {restaurant.menu?.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '20px', borderBottom: '1px solid var(--bg-subtle)' }}>
+                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '32px', borderBottom: '1px solid var(--bg-subtle)' }}>
                         <div style={{ flex: 1 }}>
-                          <h4 style={{ fontSize: '17px', fontWeight: '600', marginBottom: '4px' }}>{item.name}</h4>
-                          <p style={{ fontSize: '14px', color: 'var(--muted)', maxWidth: '400px' }}>{item.description}</p>
+                          <h4 style={{ fontSize: '19px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-strong)' }}>{item.name}</h4>
+                          <p style={{ fontSize: '15px', color: 'var(--muted)', maxWidth: '480px', lineHeight: '1.6' }}>{item.description}</p>
                         </div>
-                        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '20px' }}>
-                          <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-strong)' }}>₹{item.price}</span>
+                        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '32px' }}>
+                          <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-strong)' }}>₹{item.price}</span>
                           <Button 
-                            variant="soft" 
+                            className="btn-primary"
                             size="sm" 
                             onClick={() => onAddToCart(item, restaurant._id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                            style={{ gap: '8px', padding: '10px 20px' }}
                           >
                             <ShoppingBag size={16} /> Add
                           </Button>
@@ -491,18 +513,21 @@ export default function RestaurantDetailPage({ onAddToCart }) {
                 )}
                 
                 {activeTab === 'story' && (
-                  <div>
-                    <div style={{ fontSize: '16px', lineHeight: '1.8', color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <div style={{ fontSize: '17px', lineHeight: '1.8', color: 'var(--text)', whiteSpace: 'pre-wrap' }}>
                       {restaurant.story || "Welcome to our kitchen where we serve with love and purity. Our recipes are rooted in tradition, focusing on seasonal ingredients and spiritual balance."}
                     </div>
-                    <div style={{ marginTop: '32px', padding: '24px', background: 'var(--highlight)', borderRadius: 'var(--radius)', display: 'flex', gap: '16px' }}>
-                      <Info style={{ color: 'var(--accent)', flexShrink: 0 }} />
-                      <div style={{ fontSize: '14px', color: 'var(--text-strong)' }}>
-                        <strong>Dietary Information:</strong> This restaurant is certified as <strong>{restaurant.satvikType}</strong>. 
-                        No non-vegetarian products or alcohol are served here.
+                    <div style={{ marginTop: '48px', padding: '32px', background: 'var(--accent-extra-soft)', borderRadius: 'var(--radius-lg)', display: 'flex', gap: '20px', border: '1px solid var(--accent-soft)' }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
+                        <Info size={24} />
+                      </div>
+                      <div style={{ fontSize: '15px', color: 'var(--text-strong)', lineHeight: '1.6' }}>
+                        <strong style={{ display: 'block', marginBottom: '4px', fontSize: '16px' }}>Dietary Compliance</strong>
+                        This kitchen is certified <strong>{restaurant.satvikType}</strong>. 
+                        We strictly follow ancient wisdom in food preparation, ensuring no onion, garlic, or non-satvik ingredients are used.
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )}
               </div>
             </div>
@@ -511,20 +536,19 @@ export default function RestaurantDetailPage({ onAddToCart }) {
           </div>
 
           <aside className="sidebar">
-            <div style={{ position: 'sticky', top: '100px', display: 'grid', gap: '32px' }}>
+            <div style={{ position: 'sticky', top: '120px', display: 'grid', gap: '48px' }}>
               <BookingForm restaurantId={id} />
               
-              <div className="premium-card" style={{ background: 'var(--bg-subtle)', border: 'none' }}>
-                <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '16px' }}>Location</h4>
-                <div style={{ height: '150px', background: 'var(--highlight)', borderRadius: 'var(--radius)', marginBottom: '16px', overflow: 'hidden' }}>
-                  {/* Map placeholder */}
+              <div className="premium-card" style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '32px' }}>
+                <h4 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '20px', color: 'var(--text-strong)' }}>Find Us</h4>
+                <div style={{ height: '200px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', marginBottom: '20px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>
-                    <MapPin size={32} style={{ opacity: 0.3 }} />
+                    <MapPin size={40} style={{ opacity: 0.2 }} />
                   </div>
                 </div>
-                <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>{restaurant.address}</p>
-                <Link to="/map" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', marginTop: '12px', fontWeight: 'bold' }}>
-                  Open in Maps <ChevronRight size={14} />
+                <p style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6', marginBottom: '24px' }}>{restaurant.address}</p>
+                <Link to="/map" className="btn-soft w-full" style={{ justifyContent: 'center' }}>
+                  Open Discovery Map <ChevronRight size={16} />
                 </Link>
               </div>
             </div>

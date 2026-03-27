@@ -86,125 +86,150 @@ export default function AccountPage() {
   }
 
   return (
-    <section className="section">
+    <section className="section" style={{ paddingTop: '120px' }}>
       <div className="container">
-        <div className="section-head" style={{ marginBottom: '40px' }}>
+        <div className="section-head" style={{ marginBottom: '56px' }}>
           <div>
             <h2 className="section-title">My Account</h2>
-            <p style={{ color: 'var(--muted)', fontSize: '14px', marginTop: '4px' }}>Manage your memberships, bookings, and orders</p>
+            <p style={{ color: 'var(--muted)', fontSize: '16px', marginTop: '8px', fontWeight: '500' }}>Manage your memberships, bookings, and culinary journey</p>
           </div>
         </div>
 
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '48px' }}>
           {/* Active Subscriptions */}
-          <div style={{ gridColumn: 'span 2' }}>
-            <h3 className="detail-heading" style={{ marginBottom: '24px' }}>Active Memberships</h3>
-            <div style={{ display: 'grid', gap: '24px' }}>
+          <div className="main-account-content">
+            <h3 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <CheckCircle2 className="text-accent" size={24} /> Active Memberships
+            </h3>
+            
+            <div style={{ display: 'grid', gap: '32px' }}>
               {subs.length === 0 ? (
-                <div className="empty-state" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)', padding: '40px' }}>
-                  <p className="empty-state-desc">No active memberships found.</p>
+                <div className="empty-state" style={{ background: 'white', padding: '80px 40px', border: '1px dashed var(--border-strong)' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '20px', opacity: 0.5 }}>🍱</div>
+                  <p className="empty-state-desc">You don't have any active memberships yet. Explore restaurants to subscribe to daily meals.</p>
+                  <Button onClick={() => navigate('/restaurants')} className="btn-primary" style={{ marginTop: '24px' }}>Explore Restaurants</Button>
                 </div>
               ) : (
                 subs.map((s) => (
-                  <div key={s.id} className="card" style={{ padding: '32px', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'white' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+                  <motion.div 
+                    key={s.id} 
+                    className="premium-card" 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ padding: '40px', background: 'white', border: 'none', boxShadow: 'var(--shadow-medium)' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
                       <div>
-                        <div style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '4px' }}>
-                          Active Subscription
-                        </div>
-                        <h4 style={{ fontSize: '20px', fontWeight: 'bold' }}>Restaurant ID: {s.restaurantId}</h4>
+                        <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--accent)', fontWeight: 'bold', background: 'var(--accent-extra-soft)', padding: '4px 12px', borderRadius: 'var(--radius-full)' }}>
+                          {s.status} Plan
+                        </span>
+                        <h4 style={{ fontSize: '22px', fontWeight: 'bold', marginTop: '12px' }}>Restaurant #{s.restaurantId.slice(-4)}</h4>
                       </div>
-                      <span className="badge badge-verified" style={{ textTransform: 'capitalize' }}>
-                        {s.status}
-                      </span>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '12px', color: 'var(--muted)', marginBottom: '4px' }}>Renewal Date</div>
+                        <div style={{ fontSize: '14px', fontWeight: 'bold' }}>{new Date(s.endDate).toLocaleDateString()}</div>
+                      </div>
                     </div>
                     
-                    <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
-                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Delivery Time</div>
-                        <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                          <Clock size={18} /> {s.deliveryTime || '12:00'}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '40px' }}>
+                      <div style={{ padding: '20px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px', fontWeight: 'bold' }}>Delivery</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <Clock size={16} /> {s.deliveryTime || '12:00'}
                         </div>
                       </div>
-                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Meals Remaining</div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent)' }}>{s.remainingMeals ?? '∞'}</div>
+                      <div style={{ padding: '20px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px', fontWeight: 'bold' }}>Remaining</div>
+                        <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--accent)' }}>{s.remainingMeals ?? '∞'}</div>
                       </div>
-                      <div style={{ padding: '16px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px' }}>Status</div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--verified)' }}>Active</div>
+                      <div style={{ padding: '20px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginBottom: '8px', fontWeight: 'bold' }}>Status</div>
+                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--verified)' }}>Active</div>
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '40px', paddingTop: '32px', borderTop: '1px solid var(--bg-subtle)' }}>
                       <div>
-                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <ShoppingBag size={16} /> Selected Daily Items
+                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-strong)' }}>
+                          <ShoppingBag size={16} className="text-accent" /> Daily Items
                         </h5>
-                        <div style={{ display: 'grid', gap: '8px' }}>
+                        <div style={{ display: 'grid', gap: '10px' }}>
                           {s.selectedItems?.length > 0 ? s.selectedItems.map((item, idx) => (
-                            <div key={idx} style={{ fontSize: '14px', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <CheckCircle2 size={14} style={{ color: 'var(--verified)' }} />
+                            <div key={idx} style={{ fontSize: '14px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent)' }}></div>
                               {item.name}
                             </div>
                           )) : <p style={{ fontSize: '13px', color: 'var(--muted)' }}>No items selected.</p>}
                         </div>
                       </div>
                       <div>
-                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <MapPin size={16} /> Delivery Address
+                        <h5 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-strong)' }}>
+                          <MapPin size={16} className="text-accent" /> Delivery Address
                         </h5>
-                        <p style={{ fontSize: '13px', color: 'var(--muted)', lineHeight: '1.5' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: '1.6' }}>
                           {s.deliveryAddress || 'No address set.'}
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               )}
             </div>
           </div>
 
           {/* Sidebar: Bookings & Orders */}
-          <div style={{ display: 'grid', gap: '32px', alignContent: 'start' }}>
-            <div>
-              <h3 className="detail-heading" style={{ marginBottom: '16px' }}>Bookings</h3>
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {bookings.length === 0 ? (
-                  <p style={{ fontSize: '14px', color: 'var(--muted)' }}>No recent bookings.</p>
-                ) : (
-                  bookings.map((b) => (
-                    <div key={b.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '14px' }}>{b.people} People</span>
-                        <span style={{ fontSize: '11px', color: 'var(--verified)' }}>{b.status}</span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{b.date} • {b.time}</div>
+          <aside className="account-sidebar">
+            <div style={{ position: 'sticky', top: '120px', display: 'grid', gap: '48px' }}>
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px' }}>Recent Bookings</h3>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {bookings.length === 0 ? (
+                    <div style={{ padding: '24px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)' }}>No recent table bookings.</p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    bookings.map((b) => (
+                      <div key={b.id} className="premium-card" style={{ padding: '20px', background: 'white', border: 'none', boxShadow: 'var(--shadow-soft)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{b.people} Guests</span>
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--verified)', background: 'var(--verified-bg)', padding: '2px 8px', borderRadius: '4px' }}>{b.status}</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Calendar size={14} /> {new Date(b.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} • {b.time}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
 
-            <div>
-              <h3 className="detail-heading" style={{ marginBottom: '16px' }}>Recent Orders</h3>
-              <div style={{ display: 'grid', gap: '16px' }}>
-                {orders.length === 0 ? (
-                  <p style={{ fontSize: '14px', color: 'var(--muted)' }}>No recent orders.</p>
-                ) : (
-                  orders.slice(0, 5).map((o) => (
-                    <div key={o.id} className="card" style={{ padding: '16px', border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '14px' }}>₹{o.totalPrice}</span>
-                        <span style={{ fontSize: '11px', color: 'var(--muted)' }}>{o.status}</span>
-                      </div>
-                      <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{new Date(o.createdAt).toLocaleDateString()}</div>
+              <div>
+                <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '24px' }}>Order History</h3>
+                <div style={{ display: 'grid', gap: '16px' }}>
+                  {orders.length === 0 ? (
+                    <div style={{ padding: '24px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--muted)' }}>No orders placed yet.</p>
                     </div>
-                  ))
+                  ) : (
+                    orders.slice(0, 5).map((o) => (
+                      <div key={o.id} className="premium-card" style={{ padding: '20px', background: 'white', border: 'none', boxShadow: 'var(--shadow-soft)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '15px' }}>₹{o.totalPrice}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--muted)', fontWeight: '500' }}>{o.status}</span>
+                        </div>
+                        <div style={{ fontSize: '13px', color: 'var(--muted-light)' }}>
+                          {new Date(o.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {orders.length > 0 && (
+                  <Button variant="soft" className="w-full" style={{ marginTop: '20px' }}>View All Orders</Button>
                 )}
               </div>
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </section>

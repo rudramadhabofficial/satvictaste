@@ -1,20 +1,23 @@
 import React, { useState } from 'react'
 import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
+import { useToast } from '../components/ui/toast'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 function LoginCard({ onLogin, setView }) {
+  const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleLogin = async (e) => {
     e?.preventDefault()
-    if (!email.trim() || !password.trim()) { setMsg('Email and password required'); return }
+    if (!email.trim() || !password.trim()) { 
+      addToast('Email and password required', 'error')
+      return 
+    }
     setLoading(true)
-    setMsg('')
     try {
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
@@ -25,21 +28,21 @@ function LoginCard({ onLogin, setView }) {
       if (res.ok) {
         localStorage.setItem('partnerToken', data.token)
         localStorage.setItem('partnerId', data.id)
+        addToast('Login successful!', 'success')
         onLogin(data.id)
       } else {
-        setMsg(data.error || 'Login failed')
+        addToast(data.error || 'Login failed', 'error')
       }
     } catch (err) {
-      setMsg('Network error')
+      addToast('Network error', 'error')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="card card-submit" style={{ maxWidth: '400px', margin: '0 auto' }}>
+    <div className="card card-submit fade-in" style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h3 className="form-section-title">Partner Login</h3>
-      {msg && <div className={`message ${msg.includes('successful') ? 'success' : 'error'}`}>{msg}</div>}
       <form onSubmit={handleLogin}>
         <div style={{ marginBottom: '16px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Email</label>
@@ -61,14 +64,13 @@ function LoginCard({ onLogin, setView }) {
 }
 
 function ForgotPasswordCard({ setView }) {
+  const { addToast } = useToast()
   const [email, setEmail] = useState('')
-  const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e?.preventDefault()
     setLoading(true)
-    setMsg('')
     try {
       const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: 'POST',
@@ -76,23 +78,23 @@ function ForgotPasswordCard({ setView }) {
         body: JSON.stringify({ email })
       })
       if (res.ok) {
+        addToast('Reset code sent to your email', 'success')
         setView('reset')
       } else {
         const data = await res.json()
-        setMsg(data.error || 'Failed to send code')
+        addToast(data.error || 'Failed to send code', 'error')
       }
     } catch (err) {
-      setMsg('Network error')
+      addToast('Network error', 'error')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="card card-submit" style={{ maxWidth: '400px', margin: '0 auto' }}>
+    <div className="card card-submit fade-in" style={{ maxWidth: '400px', margin: '0 auto' }}>
       <h3 className="form-section-title">Forgot Password</h3>
       <p style={{ marginBottom: '20px', color: 'var(--muted)', fontSize: '14px', textAlign: 'center' }}>Enter your registered email to receive a reset code.</p>
-      {msg && <div className="message error">{msg}</div>}
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Email Address</label>

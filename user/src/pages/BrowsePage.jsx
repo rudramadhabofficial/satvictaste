@@ -34,37 +34,39 @@ export default function BrowsePage() {
 
   return (
     <div className="fade-in">
-      <section className="section-sm bg-subtle" style={{ borderBottom: '1px solid var(--border)' }}>
+      <section className="section-sm" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', paddingTop: '100px' }}>
         <div className="container">
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '300px', maxWidth: '500px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '32px', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="hero-search-wrap" style={{ flex: 1, minWidth: '300px', maxWidth: '600px', background: 'white', boxShadow: 'var(--shadow-soft)' }}>
               <Search 
-                style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-light)' }} 
-                size={18} 
+                style={{ marginLeft: '16px', color: 'var(--muted-light)' }} 
+                size={20} 
               />
               <UiInput
-                placeholder="Search by name, city, or area..."
+                placeholder="Search by name, city, or cuisine..."
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                style={{ paddingLeft: '44px', background: 'white' }}
+                className="hero-search"
+                style={{ border: 'none', background: 'transparent' }}
               />
             </div>
             
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '4px', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
               {satvikTypes.map(t => (
                 <button
                   key={t}
                   onClick={() => setFilter(t)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '10px 24px',
                     borderRadius: 'var(--radius-full)',
-                    fontSize: '13px',
-                    fontWeight: '500',
+                    fontSize: '14px',
+                    fontWeight: '600',
                     whiteSpace: 'nowrap',
                     background: filter === t ? 'var(--accent)' : 'white',
                     color: filter === t ? 'white' : 'var(--muted)',
                     border: `1px solid ${filter === t ? 'var(--accent)' : 'var(--border)'}`,
-                    transition: 'all 0.2s ease'
+                    boxShadow: filter === t ? '0 4px 12px rgba(95, 139, 110, 0.2)' : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.2, 1, 0.2, 1)'
                   }}
                 >
                   {t}
@@ -77,62 +79,63 @@ export default function BrowsePage() {
 
       <section className="section">
         <div className="container">
-          <div className="section-head" style={{ marginBottom: '40px' }}>
+          <div className="section-head" style={{ marginBottom: '56px', alignItems: 'center' }}>
             <div>
               <h2 className="section-title">
-                {filter === 'All' ? 'All Restaurants' : `${filter} Places`}
+                {filter === 'All' ? 'All Verified Restaurants' : `${filter} Collections`}
               </h2>
-              <p style={{ color: 'var(--muted)', fontSize: '14px', marginTop: '4px' }}>
-                Showing {filtered.length} verified results
+              <p style={{ color: 'var(--muted)', fontSize: '15px', marginTop: '8px', fontWeight: '500' }}>
+                Discovering {filtered.length} locations of purity
               </p>
             </div>
             <Link to="/map">
-              <Button variant="soft" className="btn">
-                <Map size={16} style={{ marginRight: '8px' }} />
-                Map View
+              <Button className="btn-soft" style={{ gap: '10px', padding: '12px 24px' }}>
+                <Map size={18} strokeWidth={1.5} />
+                Map Discovery
               </Button>
             </Link>
           </div>
 
           {loading ? (
-            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '32px' }}>
+            <div className="cards-grid">
               {[1, 2, 3, 4, 5, 6].map(i => (
-                <div key={i} className="premium-card" style={{ height: '300px', opacity: 0.5, background: 'var(--bg-subtle)' }} />
+                <div key={i} className="premium-card" style={{ height: '360px', opacity: 0.4, background: 'var(--bg-subtle)', border: 'none' }}>
+                  <div className="spinner" style={{ margin: '150px auto' }}></div>
+                </div>
               ))}
             </div>
           ) : (
-            <motion.div 
-              className="cards-grid"
-              layout
-            >
-              <AnimatePresence>
+            <div className="cards-grid">
+              <AnimatePresence mode='popLayout'>
                 {filtered.length === 0 ? (
                   <motion.div 
-                    className="empty-state empty-state-full"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    className="empty-state"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    style={{ background: 'white', padding: '120px 40px' }}
                   >
-                    <p className="empty-state-title">No matches found</p>
-                    <p className="empty-state-desc">Try adjusting your filters or search term to find what you're looking for.</p>
-                    <Button onClick={() => { setQ(''); setFilter('All'); }} variant="soft">Clear all filters</Button>
+                    <div style={{ fontSize: '48px', marginBottom: '24px', opacity: 0.5 }}>🍃</div>
+                    <h3 className="empty-state-title">No matches found</h3>
+                    <p className="empty-state-desc">We couldn't find any restaurants matching your search. Try adjusting your filters or search terms.</p>
+                    <Button onClick={() => { setQ(''); setFilter('All'); }} className="btn-primary" style={{ marginTop: '32px' }}>Clear all filters</Button>
                   </motion.div>
                 ) : (
                   filtered.map((r, i) => (
                     <motion.div
                       key={r._id}
                       layout
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.4, delay: i * 0.05 }}
+                      transition={{ duration: 0.5, delay: i * 0.05, ease: [0.2, 1, 0.2, 1] }}
                     >
                       <RestaurantCard r={r} />
                     </motion.div>
                   ))
                 )}
               </AnimatePresence>
-            </motion.div>
+            </div>
           )}
         </div>
       </section>

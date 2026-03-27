@@ -42,38 +42,40 @@ function Hero({ onSearch }) {
           animate="visible"
           variants={containerVariants}
         >
+          <motion.div variants={itemVariants} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--accent-extra-soft)', color: 'var(--accent)', padding: '8px 16px', borderRadius: 'var(--radius-full)', fontSize: '13px', fontWeight: 'bold', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '24px' }}>
+            <Shield size={14} /> Trusted by Seekers Worldwide
+          </motion.div>
           <motion.h1 className="hero-title text-gradient" variants={itemVariants}>
-            Calm discovery for Satvik, Jain, and spiritual diets
+            Calm discovery for Satvik & spiritual diets
           </motion.h1>
-          <motion.p className="hero-sub" variants={itemVariants}>
-            Verified restaurants serving clean, simple, and soul-enriching food. 
-            Experience purity in every bite.
+          <motion.p className="hero-sub" variants={itemVariants} style={{ color: 'var(--muted)', lineHeight: '1.7' }}>
+            Find verified restaurants serving clean, simple, and soul-enriching food. 
+            Experience purity in every bite with our handpicked collections.
           </motion.p>
           
           <motion.div className="hero-actions" variants={itemVariants}>
-            <div className="hero-search-wrap" style={{ position: 'relative', flex: 1, maxWidth: '500px' }}>
+            <div className="hero-search-wrap">
               <Search 
-                style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted-light)', zIndex: 2 }} 
+                style={{ marginLeft: '12px', color: 'var(--muted-light)' }} 
                 size={20} 
               />
               <UiInput
-                placeholder="Search by name or city"
+                placeholder="Search by name, city or cuisine..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch(query)}
                 className="hero-search"
-                style={{ paddingLeft: '48px' }}
               />
             </div>
             <Button size="lg" onClick={() => onSearch(query)} className="btn-primary">
-              Discover
+              Explore Now
             </Button>
-            <Link to="/map">
-              <Button variant="soft" size="lg" className="btn">
-                <MapPin size={18} style={{ marginRight: '8px' }} />
-                Map View
-              </Button>
-            </Link>
+          </motion.div>
+
+          <motion.div variants={itemVariants} style={{ marginTop: '40px', display: 'flex', justifyContent: 'center', gap: '24px', opacity: 0.6 }}>
+            <span style={{ fontSize: '13px', fontWeight: '500' }}>Pure Satvik</span>
+            <span style={{ fontSize: '13px', fontWeight: '500' }}>No Onion Garlic</span>
+            <span style={{ fontSize: '13px', fontWeight: '500' }}>Jain Friendly</span>
           </motion.div>
         </motion.div>
       </div>
@@ -83,22 +85,22 @@ function Hero({ onSearch }) {
 
 function BenefitsSection() {
   const benefits = [
-    { title: 'Verified Purity', desc: 'Every restaurant is manually checked for their diet practices.', icon: <Shield size={32} /> },
-    { title: 'Calm Experience', desc: 'No loud ads, no noise — just find your meal in peace.', icon: <Wind size={32} /> },
-    { title: 'Community Trust', desc: 'Built for seekers by seekers who value honest food.', icon: <Users size={32} /> }
+    { title: 'Verified Purity', desc: 'Every kitchen is manually inspected for strict adherence to satvik and jain dietary laws.', icon: <Shield size={28} /> },
+    { title: 'Calm Experience', desc: 'A distraction-free discovery process designed to match your peaceful lifestyle.', icon: <Wind size={28} /> },
+    { title: 'Soulful Community', desc: 'Join a network of seekers who value honest ingredients and conscious preparation.', icon: <Users size={28} /> }
   ]
 
   return (
-    <section className="section bg-subtle">
+    <section className="section" style={{ background: 'var(--surface)' }}>
       <div className="container">
-        <div className="section-head" style={{ textAlign: 'center', justifyContent: 'center', marginBottom: '64px' }}>
-          <div>
+        <div className="section-head" style={{ textAlign: 'center', justifyContent: 'center', marginBottom: '72px' }}>
+          <div style={{ maxWidth: '600px' }}>
             <h2 className="section-title">The Satvic Standard</h2>
-            <p style={{ color: 'var(--muted)', marginTop: '8px' }}>Purity, peace, and honesty in every recommendation.</p>
+            <p style={{ color: 'var(--muted)', marginTop: '16px', fontSize: '17px' }}>We believe that what you eat shapes who you are. Our platform is built on three core pillars of trust.</p>
           </div>
         </div>
         
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '40px' }}>
+        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
           {benefits.map((b, i) => (
             <motion.div 
               key={i} 
@@ -106,14 +108,14 @@ function BenefitsSection() {
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              style={{ textAlign: 'center', padding: '40px 32px' }}
+              transition={{ delay: i * 0.1, duration: 0.8 }}
+              style={{ textAlign: 'left', padding: '48px 40px', border: 'none', background: 'white', boxShadow: 'var(--shadow-soft)' }}
             >
-              <div style={{ color: 'var(--accent)', marginBottom: '24px', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ color: 'var(--accent)', marginBottom: '32px', background: 'var(--accent-extra-soft)', width: '56px', height: '56px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {b.icon}
               </div>
-              <h3 style={{ fontSize: '20px', marginBottom: '12px' }}>{b.title}</h3>
-              <p className="card-meta" style={{ fontSize: '15px' }}>{b.desc}</p>
+              <h3 style={{ fontSize: '22px', marginBottom: '16px' }}>{b.title}</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: '1.7' }}>{b.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -141,10 +143,10 @@ export default function HomePage() {
           <div className="section-head">
             <div>
               <h2 className="section-title">Handpicked Collections</h2>
-              <p style={{ color: 'var(--muted)', fontSize: '15px' }}>Explore the finest satvik dining experiences.</p>
+              <p style={{ color: 'var(--muted)', fontSize: '16px', marginTop: '8px' }}>Explore the finest dining locations verified for purity.</p>
             </div>
-            <Link to="/restaurants" className="btn btn-soft" style={{ alignSelf: 'center' }}>
-              Browse all <ArrowRight size={16} style={{ marginLeft: '8px' }} />
+            <Link to="/restaurants" className="btn-soft" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              View All <ArrowRight size={16} />
             </Link>
           </div>
           
@@ -153,16 +155,16 @@ export default function HomePage() {
               <div className="empty-state">
                 <p className="empty-state-title">No restaurants found</p>
                 <p className="empty-state-desc">{q ? 'Try a different search or browse all.' : 'Verified restaurants will appear here soon.'}</p>
-                {q && <Link to="/restaurants" className="btn btn-soft">Browse all</Link>}
+                {q && <Button variant="soft" onClick={() => setQ('')}>Clear Search</Button>}
               </div>
             )}
-            {filtered.slice(0, 8).map((r, i) => (
+            {filtered.slice(0, 6).map((r, i) => (
               <motion.div
                 key={r._id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: i * 0.1 }}
               >
                 <RestaurantCard r={r} />
               </motion.div>
@@ -176,26 +178,29 @@ export default function HomePage() {
       <section className="section-lg">
         <div className="container">
           <motion.div 
-            className="card glass" 
+            className="card" 
             style={{ 
-              padding: '80px 40px', 
+              padding: '100px 40px', 
               textAlign: 'center', 
-              background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)', 
+              background: 'linear-gradient(135deg, var(--text-strong) 0%, #2C332E 100%)', 
               color: 'white',
-              borderRadius: '32px',
+              borderRadius: 'var(--radius-xl)',
               border: 'none',
-              boxShadow: 'var(--shadow-medium)'
+              boxShadow: 'var(--shadow-medium)',
+              position: 'relative',
+              overflow: 'hidden'
             }}
-            whileHover={{ scale: 1.01 }}
-            transition={{ type: 'spring', stiffness: 300 }}
+            whileHover={{ y: -4 }}
           >
-            <h2 className="section-title" style={{ color: 'white', marginBottom: '20px', fontSize: '32px' }}>Are you a Restaurant Owner?</h2>
-            <p style={{ marginBottom: '40px', fontSize: '19px', opacity: 0.9, maxWidth: '600px', margin: '0 auto 40px' }}>
-              Join our exclusive network of verified Satvik and Jain-friendly kitchens and reach seekers of pure food.
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.1, background: 'radial-gradient(circle at 20% 30%, var(--accent), transparent 70%)' }}></div>
+            
+            <h2 className="section-title" style={{ color: 'white', marginBottom: '24px', fontSize: '40px', position: 'relative', zIndex: 1 }}>Are you a Restaurant Owner?</h2>
+            <p style={{ marginBottom: '48px', fontSize: '20px', opacity: 0.8, maxWidth: '640px', margin: '0 auto 48px', lineHeight: '1.7', position: 'relative', zIndex: 1 }}>
+              Join our exclusive network of verified Satvik kitchens and reach thousands of seekers looking for pure, conscious food.
             </p>
-            <a href="https://partner.satvictaste.onrender.com" target="_blank" rel="noreferrer">
-              <Button size="lg" style={{ background: 'white', color: 'var(--accent)', fontWeight: 'bold', padding: '16px 40px' }}>
-                Join the Network
+            <a href="https://partner.satvictaste.onrender.com" target="_blank" rel="noreferrer" style={{ position: 'relative', zIndex: 1 }}>
+              <Button size="lg" style={{ background: 'var(--accent)', color: 'white', fontWeight: 'bold', padding: '18px 48px', border: 'none' }}>
+                List your Restaurant
               </Button>
             </a>
           </motion.div>

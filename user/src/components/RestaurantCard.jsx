@@ -21,60 +21,57 @@ export function RestaurantCard({ r }) {
     <Link to={`/restaurants/${r._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
       <motion.div 
         className="premium-card" 
-        style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexData: 'column' }}
-        whileHover={{ y: -8 }}
-        transition={{ duration: 0.3 }}
+        style={{ padding: 0, overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', border: 'none', background: 'white' }}
+        whileHover={{ y: -10 }}
+        transition={{ duration: 0.4, ease: [0.2, 1, 0.2, 1] }}
       >
         <div 
           className="card-cover" 
           style={{ 
-            height: '180px', 
+            height: '220px', 
             backgroundImage: r.coverImage ? `url(${r.coverImage})` : 'none',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            position: 'relative'
+            position: 'relative',
+            backgroundRepeat: 'no-repeat',
+            backgroundColor: 'var(--bg-subtle)'
           }}
         >
           {r.verified && (
-            <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 2 }}>
+            <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 2 }}>
               <VerifiedBadge />
             </div>
           )}
           <div style={{ 
             position: 'absolute', 
-            bottom: 0, 
-            left: 0, 
-            right: 0, 
-            height: '60px', 
-            background: 'linear-gradient(transparent, rgba(0,0,0,0.4))',
+            inset: 0,
+            background: 'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.3) 100%)',
             zIndex: 1
           }} />
         </div>
         
-        <div className="card-body" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-            <h3 className="card-title" style={{ fontSize: '18px', fontWeight: '600' }}>{r.name}</h3>
-          </div>
+        <div className="card-body" style={{ padding: '24px' }}>
+          <h3 className="card-title" style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-strong)' }}>{r.name}</h3>
           
-          <div className="card-meta" style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--muted)', fontSize: '13px', marginBottom: '16px' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <MapPin size={14} />
+          <div className="card-meta" style={{ display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--muted)', fontSize: '14px', marginBottom: '20px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <MapPin size={14} strokeWidth={2} />
               {r.area || r.city}
             </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Clock size={14} />
-              {r.bestTimeToVisit || '11am - 10pm'}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={14} strokeWidth={2} />
+              {r.bestTimeToVisit || 'Satvik Timing'}
             </span>
           </div>
           
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 'auto' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: 'auto' }}>
             {r.satvikType && (
-              <span className="tag" style={{ background: 'var(--highlight)', color: 'var(--text-strong)', border: 'none' }}>
+              <span className="tag" style={{ background: 'var(--accent-extra-soft)', color: 'var(--accent)', fontWeight: 'bold' }}>
                 {r.satvikType}
               </span>
             )}
             {r.priceRange && (
-              <span className="tag" style={{ background: 'var(--bg-subtle)', border: 'none' }}>
+              <span className="tag" style={{ background: 'var(--bg-subtle)', color: 'var(--muted)' }}>
                 {r.priceRange}
               </span>
             )}

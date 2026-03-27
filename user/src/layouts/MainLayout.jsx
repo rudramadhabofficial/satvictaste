@@ -12,7 +12,7 @@ export function Header({ cartCount, onCartClick }) {
   const location = useLocation()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
+    const onScroll = () => setScrolled(window.scrollY > 40)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
@@ -29,43 +29,32 @@ export function Header({ cartCount, onCartClick }) {
   const logout = () => {
     localStorage.removeItem('userToken')
     localStorage.removeItem('userId')
+    localStorage.removeItem('user')
     navigate('/')
   }
 
   return (
-    <header className={`header glass ${scrolled ? 'scrolled' : ''}`} style={{ 
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      padding: scrolled ? '12px 0' : '20px 0',
-      borderBottom: scrolled ? '1px solid var(--border)' : '1px solid transparent'
-    }}>
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link to="/" className="header-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <img src="/logo.png" alt="Satvic" style={{ height: scrolled ? '32px' : '40px', transition: 'height 0.3s ease' }} />
-          <span className="header-title" style={{ 
-            fontSize: scrolled ? '18px' : '22px', 
-            fontWeight: 'bold', 
-            color: 'var(--text-strong)',
-            transition: 'font-size 0.3s ease'
-          }}>
-            SatvicTaste
-          </span>
+    <header className={`header ${scrolled ? 'scrolled' : ''}`}>
+      <div className="container header-inner">
+        <Link to="/" className="header-brand">
+          <img src="/logo.png" alt="Satvic" className="header-logo" />
+          <span className="header-title">SatvicTaste</span>
         </Link>
 
-        <nav className="nav desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <Link to="/restaurants" className={`nav-link ${location.pathname === '/restaurants' ? 'active' : ''}`} style={{ fontSize: '14px', fontWeight: '500', color: 'var(--muted)' }}>Browse</Link>
-          <Link to="/map" className="nav-link" style={{ fontSize: '14px', fontWeight: '500', color: 'var(--muted)' }}>Map</Link>
-          {logged && <Link to="/orders" className={`nav-link ${location.pathname === '/orders' ? 'active' : ''}`} style={{ fontSize: '14px', fontWeight: '500', color: 'var(--muted)' }}>Orders</Link>}
+        <nav className="nav desktop-only">
+          <Link to="/restaurants" className={`nav-link ${location.pathname === '/restaurants' ? 'active' : ''}`}>Browse</Link>
+          <Link to="/map" className={`nav-link ${location.pathname === '/map' ? 'active' : ''}`}>Map View</Link>
+          {logged && <Link to="/orders" className={`nav-link ${location.pathname === '/orders' ? 'active' : ''}`}>My Orders</Link>}
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '16px', borderLeft: '1px solid var(--border)', paddingLeft: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginLeft: '12px', borderLeft: '1px solid var(--border)', paddingLeft: '32px' }}>
             <div style={{ position: 'relative', cursor: 'pointer', color: 'var(--text-strong)' }} onClick={onCartClick}>
-              <ShoppingBag size={20} />
+              <ShoppingBag size={22} strokeWidth={1.5} />
               {cartCount > 0 && (
                 <motion.span 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   style={{ 
-                    position: 'absolute', top: '-8px', right: '-8px', 
+                    position: 'absolute', top: '-6px', right: '-6px', 
                     background: 'var(--accent)', color: 'white', borderRadius: '50%', 
                     width: '18px', height: '18px', fontSize: '10px', 
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' 
@@ -78,44 +67,49 @@ export function Header({ cartCount, onCartClick }) {
             
             {!logged ? (
               <Link to="/login">
-                <Button size="sm" className="btn-primary">Login</Button>
+                <Button className="btn-primary">Login</Button>
               </Link>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Link to="/account" style={{ color: 'var(--text-strong)' }}><User size={20} /></Link>
-                <button className="btn-ghost" onClick={logout} style={{ color: 'var(--muted)', padding: '4px' }}><LogOut size={18} /></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <Link to="/account" style={{ color: 'var(--text-strong)' }}><User size={22} strokeWidth={1.5} /></Link>
+                <button className="btn-ghost" onClick={logout} style={{ color: 'var(--muted)', padding: '4px' }} title="Logout">
+                  <LogOut size={20} strokeWidth={1.5} />
+                </button>
               </div>
             )}
           </div>
         </nav>
 
-        <button className="mobile-only btn-ghost" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        <button className="mobile-only" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ background: 'none', color: 'var(--text-strong)' }}>
+          {mobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mobile-menu glass"
-            style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mobile-menu"
+            style={{ 
+              position: 'fixed', top: '72px', left: 0, right: 0, bottom: 0,
+              background: 'white', zIndex: 999, padding: '40px var(--space-4)'
+            }}
           >
-            <div className="container" style={{ padding: '24px 0' }}>
-              <nav style={{ display: 'grid', gap: '16px' }}>
-                <Link to="/restaurants" style={{ fontSize: '18px', fontWeight: '500', padding: '12px 0' }}>Browse Restaurants</Link>
-                <Link to="/map" style={{ fontSize: '18px', fontWeight: '500', padding: '12px 0' }}>Map View</Link>
-                {logged && <Link to="/orders" style={{ fontSize: '18px', fontWeight: '500', padding: '12px 0' }}>My Orders</Link>}
-                {logged && <Link to="/account" style={{ fontSize: '18px', fontWeight: '500', padding: '12px 0' }}>Account Settings</Link>}
+            <nav style={{ display: 'grid', gap: '24px', textAlign: 'center' }}>
+              <Link to="/restaurants" style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-strong)' }}>Browse Restaurants</Link>
+              <Link to="/map" style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-strong)' }}>Map Discovery</Link>
+              {logged && <Link to="/orders" style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-strong)' }}>Track Orders</Link>}
+              {logged && <Link to="/account" style={{ fontSize: '24px', fontWeight: '600', color: 'var(--text-strong)' }}>My Profile</Link>}
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '40px' }}>
                 {!logged ? (
-                  <Link to="/login"><Button className="btn-primary w-full" size="lg">Login / Sign Up</Button></Link>
+                  <Link to="/login"><Button className="btn-primary w-full" size="lg">Get Started</Button></Link>
                 ) : (
-                  <Button variant="soft" className="w-full" onClick={logout} style={{ color: 'red' }}>Logout</Button>
+                  <Button variant="soft" className="w-full" onClick={logout} style={{ color: '#e53e3e' }}>Sign Out</Button>
                 )}
-              </nav>
-            </div>
+              </div>
+            </nav>
           </motion.div>
         )}
       </AnimatePresence>
@@ -125,49 +119,56 @@ export function Header({ cartCount, onCartClick }) {
 
 export function Footer() {
   return (
-    <footer className="footer" style={{ background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)', padding: '80px 0 40px' }}>
+    <footer className="footer">
       <div className="container">
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '64px', marginBottom: '64px' }}>
+        <div className="footer-inner">
           <div className="footer-brand">
-            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-              <img src="/logo.png" alt="Satvic" style={{ height: '32px' }} />
-              <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--text-strong)' }}>SatvicTaste</span>
+            <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+              <img src="/logo.png" alt="Satvic" style={{ height: '36px' }} />
+              <span className="footer-brand-name">SatvicTaste</span>
             </Link>
-            <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: '1.7', maxWidth: '320px' }}>
-              Verified Satvik, Jain & spiritual food discovery. 
-              Helping you find meals that nourish both body and soul.
+            <p className="footer-tagline">
+              Curating the world's most authentic Satvik and Jain-friendly dining experiences for spiritual seekers.
             </p>
           </div>
           
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '24px', color: 'var(--text-strong)' }}>Platform</h4>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '12px' }}>
-              <li><Link to="/restaurants" style={{ color: 'var(--muted)', fontSize: '14px' }}>Browse Restaurants</Link></li>
-              <li><Link to="/map" style={{ color: 'var(--muted)', fontSize: '14px' }}>Map Discovery</Link></li>
-              <li><Link to="/about" style={{ color: 'var(--muted)', fontSize: '14px' }}>Our Mission</Link></li>
-              <li><Link to="/account" style={{ color: 'var(--muted)', fontSize: '14px' }}>Partner Portal</Link></li>
+          <div className="footer-nav">
+            <h4>Explore</h4>
+            <ul>
+              <li><Link to="/restaurants">Restaurants</Link></li>
+              <li><Link to="/map">Map Discovery</Link></li>
+              <li><Link to="/about">Our Mission</Link></li>
             </ul>
           </div>
 
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '24px', color: 'var(--text-strong)' }}>Trust & Safety</h4>
-            <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: '1.6', marginBottom: '20px' }}>
-              All restaurants are manually verified for strict dietary compliance.
+          <div className="footer-nav">
+            <h4>For Partners</h4>
+            <ul>
+              <li><Link to="https://partner.satvictaste.onrender.com">Partner Portal</Link></li>
+              <li><Link to="/guidelines">Purity Standards</Link></li>
+              <li><Link to="/support">Support</Link></li>
+            </ul>
+          </div>
+
+          <div className="footer-nav">
+            <h4>Connect</h4>
+            <p style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: '1.6' }}>
+              Stay updated with new verified locations and community stories.
             </p>
-            <Link to="/about" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', fontWeight: 'bold', color: 'var(--accent)' }}>
-              Verification Process <ChevronRight size={14} />
-            </Link>
+            <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
+              <a href="#" style={{ color: 'var(--text-strong)' }}>Instagram</a>
+              <a href="#" style={{ color: 'var(--text-strong)' }}>Twitter</a>
+            </div>
           </div>
         </div>
         
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
-          <p style={{ color: 'var(--muted-light)', fontSize: '13px' }}>
-            © {new Date().getFullYear()} SatvicTaste. Purely Crafted.
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+          <p style={{ color: 'var(--muted-light)', fontSize: '12px', fontWeight: '500' }}>
+            © {new Date().getFullYear()} SATVICTASTE. ALL RIGHTS RESERVED.
           </p>
           <div style={{ display: 'flex', gap: '24px' }}>
-            <a href="#" style={{ color: 'var(--muted-light)', fontSize: '13px' }}>Privacy</a>
-            <a href="#" style={{ color: 'var(--muted-light)', fontSize: '13px' }}>Terms</a>
-            <a href="#" style={{ color: 'var(--muted-light)', fontSize: '13px' }}>Guidelines</a>
+            <a href="#" style={{ color: 'var(--muted-light)', fontSize: '12px', fontWeight: '500' }}>PRIVACY</a>
+            <a href="#" style={{ color: 'var(--muted-light)', fontSize: '12px', fontWeight: '500' }}>TERMS</a>
           </div>
         </div>
       </div>
