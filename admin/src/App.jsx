@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './index.css'
 
-const API = 'https://satvictaste.onrender.com/api'
+const API = (import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com') + '/api'
 
 function Header({ authed, onLogout, setTab }) {
   return (
