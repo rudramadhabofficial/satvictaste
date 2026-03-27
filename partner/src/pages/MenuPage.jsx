@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 export default function MenuPage({ partnerId }) {
   const [restaurant, setRestaurant] = useState(null)

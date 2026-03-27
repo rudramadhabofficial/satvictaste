@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 function UsageMonitor({ partnerId }) {
   const [logs, setLogs] = useState([])
