@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Package, Clock, MapPin, CheckCircle2, XCircle, ChevronRight, ShoppingBag, ArrowLeft } from 'lucide-react'
 import { Button } from '../components/ui/button.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 const statusSteps = [
   { id: 'PLACED', label: 'Placed', icon: '📝' },

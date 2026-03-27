@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card.
 import { Input as UiInput } from '../components/ui/input.jsx'
 import { VerifiedBadge } from '../components/RestaurantCard.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 function BookingForm({ restaurantId }) {
   const [date, setDate] = useState('')

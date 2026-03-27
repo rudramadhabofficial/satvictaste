@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { ShoppingBag, MapPin, CreditCard, ArrowLeft, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { Button } from '../components/ui/button.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 export default function CheckoutPage({ cart, setCart }) {
   const [address, setAddress] = useState('')

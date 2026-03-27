@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button.jsx'
 import { Clock, ShoppingBag, MapPin, CheckCircle2 } from 'lucide-react'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 export default function AccountPage() {
   const [subs, setSubs] = useState([])

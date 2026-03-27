@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
 import { RestaurantCard } from '../components/RestaurantCard.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 const containerVariants = {
   hidden: { opacity: 0 },

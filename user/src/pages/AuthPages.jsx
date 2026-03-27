@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
 
-const API_BASE = 'https://satvictaste.onrender.com'
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -62,10 +62,129 @@ export function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Logging in...' : 'Login'}
               </Button>
+              <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px' }}>
+                <Link to="/forgot-password" style={{ color: 'var(--muted)', textDecoration: 'none' }}>Forgot password?</Link>
+              </div>
               <p style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px', color: 'var(--muted)' }}>
                 Don't have an account? <Link to="/signup">Sign up</Link>
               </p>
             </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function ForgotPasswordPage() {
+  const [email, setEmail] = useState('')
+  const [error, setError] = useState('')
+  const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault()
+    if (!email.trim()) return
+    setLoading(true)
+    setError('')
+    setMsg('')
+    try {
+      const r = await fetch(`${API_BASE}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error || 'Failed')
+      navigate(`/reset-password?email=${encodeURIComponent(email)}`)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="section">
+      <div className="container-tight">
+        <div className="card card-submit">
+          <h3 className="form-section-title">Forgot Password</h3>
+          <p style={{ marginBottom: '24px', color: 'var(--muted)', fontSize: '14px' }}>
+            Enter your email to receive a 4-digit reset code.
+          </p>
+          {error && <div className="message error" style={{ marginBottom: '16px' }}>{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Email Address</label>
+              <UiInput type="email" placeholder="email@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Sending code...' : 'Send Reset Code'}
+            </Button>
+            <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '14px' }}>
+              <Link to="/login">Back to Login</Link>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function ResetPasswordPage() {
+  const [token, setToken] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const email = new URLSearchParams(location.search).get('email')
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault()
+    if (!token.trim() || !password.trim()) return
+    setLoading(true)
+    setError('')
+    try {
+      const r = await fetch(`${API_BASE}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword: password })
+      })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error || 'Failed')
+      navigate('/login')
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="section">
+      <div className="container-tight">
+        <div className="card card-submit">
+          <h3 className="form-section-title">Reset Password</h3>
+          <p style={{ marginBottom: '24px', color: 'var(--muted)', fontSize: '14px' }}>
+            Enter the code sent to <strong>{email}</strong> and your new password.
+          </p>
+          {error && <div className="message error" style={{ marginBottom: '16px' }}>{error}</div>}
+          <form onSubmit={handleSubmit}>
+            <div className="grid" style={{ display: 'grid', gap: '16px', marginBottom: '24px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>Reset Code</label>
+                <UiInput placeholder="4-digit code" value={token} onChange={(e) => setToken(e.target.value)} required maxLength={4} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: 500 }}>New Password</label>
+                <UiInput type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              </div>
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Updating password...' : 'Update Password'}
+            </Button>
           </form>
         </div>
       </div>
