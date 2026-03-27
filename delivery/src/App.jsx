@@ -15,86 +15,14 @@ function LandingHeader() {
         </div>
         <nav className="nav">
           <a href="#how">How it works</a>
-          <a href="#register" className="btn btn-primary btn-sm">Become a Partner</a>
+          <a href="#login" className="btn btn-primary btn-sm">Partner Login</a>
         </nav>
       </div>
     </header>
   )
 }
 
-function RegistrationForm({ onVerificationNeeded }) {
-  const [profile, setProfile] = useState({
-    name: '', email: '', password: '', phone: '', city: ''
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
-
-  const updateProfile = (field, value) => setProfile(p => ({ ...p, [field]: value }))
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      const res = await fetch(`${API_BASE}/api/delivery-auth/signup`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile)
-      })
-      const data = await res.json()
-      if (res.ok) {
-        onVerificationNeeded(profile.email)
-      } else {
-        setMessage(data.error || 'Registration failed')
-      }
-    } catch (e) { 
-      setMessage('Submission failed') 
-    } finally { 
-      setSubmitting(false) 
-    }
-  }
-
-  return (
-    <section id="register" className="section">
-      <div className="container-tight">
-        <div className="card">
-          <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-            <h2 className="view-title">Delivery Partner Registration</h2>
-          </div>
-          {message && <div className={`message ${message.includes('successful') ? 'success' : 'error'}`}>{message}</div>}
-          <form onSubmit={handleSubmit} className="form-step">
-            <div className="grid grid-2">
-              <div>
-                <label>Full Name</label>
-                <UiInput value={profile.name} onChange={e => updateProfile('name', e.target.value)} required />
-              </div>
-              <div>
-                <label>Phone Number</label>
-                <UiInput value={profile.phone} onChange={e => updateProfile('phone', e.target.value)} required />
-              </div>
-              <div>
-                <label>Email Address</label>
-                <UiInput type="email" value={profile.email} onChange={e => updateProfile('email', e.target.value)} required />
-              </div>
-              <div>
-                <label>City</label>
-                <UiInput value={profile.city} onChange={e => updateProfile('city', e.target.value)} required />
-              </div>
-              <div className="grid-full">
-                <label>Password</label>
-                <UiInput type="password" value={profile.password} onChange={e => updateProfile('password', e.target.value)} required />
-              </div>
-            </div>
-            <Button type="submit" className="w-full" disabled={submitting} style={{ marginTop: '24px' }}>
-              {submitting ? 'Registering...' : 'Join Now'}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function LoginForm({ onLogin }) {
+function LoginForm({ onLogin, setView }) {
   const [creds, setCreds] = useState({ email: '', password: '' })
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
@@ -133,9 +61,12 @@ function LoginForm({ onLogin }) {
               <label>Email</label>
               <UiInput type="email" value={creds.email} onChange={e => setCreds({ ...creds, email: e.target.value })} required />
             </div>
-            <div style={{ marginBottom: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label>Password</label>
               <UiInput type="password" value={creds.password} onChange={e => setCreds({ ...creds, password: e.target.value })} required />
+            </div>
+            <div style={{ marginBottom: '20px', textAlign: 'right' }}>
+              <button type="button" className="text-link" style={{ fontSize: '13px', color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setView('forgot')}>Forgot password?</button>
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? 'Logging in...' : 'Login'}
@@ -147,29 +78,29 @@ function LoginForm({ onLogin }) {
   )
 }
 
-function VerifyForm({ email, onVerified }) {
-  const [token, setToken] = useState('')
+function ForgotPasswordForm({ setView }) {
+  const [email, setEmail] = useState('')
+  const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     setLoading(true)
-    setError('')
+    setMsg('')
     try {
-      const res = await fetch(`${API_BASE}/api/auth/verify`, {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, token })
+        body: JSON.stringify({ email })
       })
-      const data = await res.json()
       if (res.ok) {
-        onVerified()
+        setView('reset')
       } else {
-        setError(data.error || 'Verification failed')
+        const data = await res.json()
+        setMsg(data.error || 'Failed to send code')
       }
-    } catch (e) {
-      setError('Verification failed')
+    } catch (err) {
+      setMsg('Network error')
     } finally {
       setLoading(false)
     }
@@ -178,25 +109,77 @@ function VerifyForm({ email, onVerified }) {
   return (
     <section className="section">
       <div className="container-tight">
-        <div className="card" style={{ textAlign: 'center' }}>
-          <h2 className="view-title">Verify Email</h2>
-          <p style={{ marginBottom: '24px', color: 'var(--muted)' }}>
-            We've sent a 4-digit code to <strong>{email}</strong>
-          </p>
-          {error && <div className="message error">{error}</div>}
+        <div className="card">
+          <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>Forgot Password</h2>
+          {msg && <div className="message error">{msg}</div>}
           <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '24px' }}>
-              <UiInput
-                placeholder="4-digit code"
-                value={token}
-                onChange={e => setToken(e.target.value)}
-                style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '24px' }}
-                maxLength={4}
-                required
-              />
+            <div style={{ marginBottom: '20px' }}>
+              <label>Email Address</label>
+              <UiInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" required />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Verifying...' : 'Verify & Continue'}
+              {loading ? 'Sending code...' : 'Send Reset Code'}
+            </Button>
+            <button type="button" className="w-full btn-soft" style={{ marginTop: '12px' }} onClick={() => setView('login')}>Back to Login</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function ResetPasswordForm({ setView }) {
+  const [email, setEmail] = useState('')
+  const [token, setToken] = useState('')
+  const [password, setPassword] = useState('')
+  const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e?.preventDefault()
+    setLoading(true)
+    setMsg('')
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, token, newPassword: password })
+      })
+      if (res.ok) {
+        setView('login')
+        alert('Password reset successful! Please login.')
+      } else {
+        const data = await res.json()
+        setMsg(data.error || 'Reset failed')
+      }
+    } catch (err) {
+      setMsg('Network error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <section className="section">
+      <div className="container-tight">
+        <div className="card">
+          <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>Reset Password</h2>
+          {msg && <div className="message error">{msg}</div>}
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '16px' }}>
+              <label>Email</label>
+              <UiInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label>Reset Code</label>
+              <UiInput value={token} onChange={(e) => setToken(e.target.value)} maxLength={4} required />
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label>New Password</label>
+              <UiInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Updating...' : 'Update Password'}
             </Button>
           </form>
         </div>
@@ -206,6 +189,8 @@ function VerifyForm({ email, onVerified }) {
 }
 
 function LandingPage({ onLogin }) {
+  const [view, setView] = useState('login')
+
   return (
     <div className="app-wrap">
       <LandingHeader />
@@ -215,7 +200,9 @@ function LandingPage({ onLogin }) {
           <p className="hero-sub" style={{ fontSize: '18px', maxWidth: '600px', margin: '20px auto' }}>Join SatvicTaste as a delivery partner and help us bring healthy, satvic meals to those who need them.</p>
         </section>
 
-        <LoginForm onLogin={onLogin} />
+        {view === 'login' && <LoginForm onLogin={onLogin} setView={setView} />}
+        {view === 'forgot' && <ForgotPasswordForm setView={setView} />}
+        {view === 'reset' && <ResetPasswordForm setView={setView} />}
         
         <div style={{ textAlign: 'center', marginTop: '32px', padding: '24px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
           <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
@@ -227,7 +214,6 @@ function LandingPage({ onLogin }) {
       <Footer />
     </div>
   )
-}
 
 function Footer() {
   return (
