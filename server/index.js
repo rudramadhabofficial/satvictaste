@@ -317,6 +317,8 @@ async function maybeSendEmail(to, subject, text, html) {
   }
 }
 
+const inMemoryNotifications = [];
+
 async function notifyUser(userId, subject, text) {
   let user;
   if (mongoose.connection.readyState === 1 && MONGO_URI) {
@@ -325,16 +327,44 @@ async function notifyUser(userId, subject, text) {
     user = inMemoryUsers.find(u => u.id === userId);
   }
   const email = user ? user.email : `user-${userId}@satvic.local`;
+  
+  // Store notification for polling
+  inMemoryNotifications.push({
+    id: Date.now() + Math.random().toString(36).substr(2, 9),
+    userId,
+    title: subject,
+    message: text,
+    read: false,
+    createdAt: new Date()
+  });
+
   await maybeSendEmail(email, subject, text);
 }
 
+app.get('/api/notifications', async (req, res) => {
+  const { userId, restaurantId, dpId } = req.query;
+  const filtered = inMemoryNotifications.filter(n => 
+    (userId && n.userId === userId) || 
+    (restaurantId && n.restaurantId === restaurantId) ||
+    (dpId && n.deliveryPartnerId === dpId)
+  );
+  res.json(filtered.slice(-10).reverse());
+});
+
 async function notifyRestaurant(restaurantId, subject, text) {
-  // In a real app, find the restaurant owner's email
+  // Store notification for polling
+  inMemoryNotifications.push({
+    id: Date.now() + Math.random().toString(36).substr(2, 9),
+    restaurantId,
+    title: subject,
+    message: text,
+    read: false,
+    createdAt: new Date()
+  });
   await maybeSendEmail(`restaurant-${restaurantId}@satvic.local`, subject, text);
 }
 
 async function notifyDeliveryPartner(dpId, subject, text) {
-  // In a real app, find the delivery partner's email/token
   let dp;
   if (mongoose.connection.readyState === 1 && MONGO_URI) {
     dp = await mongoose.model('DeliveryPartner').findById(dpId);
@@ -342,6 +372,17 @@ async function notifyDeliveryPartner(dpId, subject, text) {
     dp = inMemoryDeliveryPartners.find(x => x.id === dpId);
   }
   const email = dp ? dp.email : `dp-${dpId}@satvic.local`;
+
+  // Store notification for polling
+  inMemoryNotifications.push({
+    id: Date.now() + Math.random().toString(36).substr(2, 9),
+    deliveryPartnerId: dpId,
+    title: subject,
+    message: text,
+    read: false,
+    createdAt: new Date()
+  });
+
   await maybeSendEmail(email, subject, text);
 }
 
@@ -1382,7 +1423,6 @@ app.post('/api/partner/orders/:id/status', partnerAuth, async (req, res) => {
       order = inMemoryOrders.find(x => x.id === id);
       if (!order) return res.status(404).json({ error: 'Order not found' });
       
-      // In-memory check for restaurant ownership
       const restaurant = sampleData.find(r => r._id === order.restaurantId);
       if (restaurant && restaurant.ownerId && restaurant.ownerId !== userId) {
         return res.status(403).json({ error: 'Forbidden' });
@@ -1399,9 +1439,47 @@ app.post('/api/partner/orders/:id/status', partnerAuth, async (req, res) => {
       await notifyUser(order.userId, 'Order Accepted', `Your order #${orderIdShort} has been accepted by the restaurant.`);
     } else if (status === 'READY') {
       await notifyUser(order.userId, 'Order Ready', `Your order #${orderIdShort} is ready and will be picked up soon.`);
+      // Admin will now see this order as ready for assignment
     }
 
     res.json({ id: order._id ? String(order._id) : order.id, status: order.status });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin: Assign Delivery Partner
+app.post('/api/admin/orders/:id/assign', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryPartnerId } = req.body;
+    if (!deliveryPartnerId) return res.status(400).json({ error: 'Delivery partner ID required' });
+
+    let order;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      order = await Order.findById(id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.status !== 'READY') return res.status(400).json({ error: 'Order must be READY before assignment' });
+
+      order.status = 'ASSIGNED';
+      order.deliveryPartnerId = deliveryPartnerId;
+      order.assignedAt = new Date();
+      await order.save();
+    } else {
+      order = inMemoryOrders.find(x => x.id === id);
+      if (!order) return res.status(404).json({ error: 'Order not found' });
+      if (order.status !== 'READY') return res.status(400).json({ error: 'Order not ready' });
+
+      order.status = 'ASSIGNED';
+      order.deliveryPartnerId = deliveryPartnerId;
+      order.assignedAt = new Date();
+    }
+
+    const orderIdShort = (order._id ? String(order._id) : order.id).slice(-6);
+    await notifyUser(order.userId, 'Delivery Partner Assigned', `A delivery partner has been assigned to your order #${orderIdShort}.`);
+    await notifyDeliveryPartner(deliveryPartnerId, 'New Delivery Assigned', `You have been assigned a new delivery #${orderIdShort}.`);
+
+    res.json({ success: true, status: 'ASSIGNED' });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }

@@ -6,7 +6,6 @@ import { useToast } from './components/ui/toast'
 import { 
   LayoutDashboard, 
   Truck, 
-  ShoppingBag, 
   LogOut, 
   Menu as MenuIcon, 
   X, 
@@ -269,102 +268,6 @@ function Footer() {
   )
 }
 
-function AvailableDeliveries() {
-  const [deliveries, setDeliveries] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [msg, setMsg] = useState('')
-
-  const load = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/delivery/available-orders`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
-      })
-      const data = await res.json()
-      setDeliveries(Array.isArray(data) ? data : [])
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    const t = setInterval(load, 15000)
-    return () => clearInterval(t)
-  }, [])
-
-  const pickUp = async (id) => {
-    try {
-      const res = await fetch(`${API_BASE}/api/delivery/orders/${id}/accept`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
-      })
-      if (res.ok) {
-        setMsg('Order accepted for delivery!')
-        load()
-        setTimeout(() => setMsg(''), 3000)
-      } else {
-        const data = await res.json()
-        setMsg(data.error || 'Failed to accept')
-      }
-    } catch (e) {
-      setMsg('Failed to accept')
-    }
-  }
-
-  return (
-    <div className="view-content">
-      <div className="view-header" style={{ marginBottom: '32px' }}>
-        <h2 className="view-title">Available Deliveries</h2>
-        <p style={{ color: 'var(--muted)', marginTop: '4px' }}>Find and accept new delivery tasks near you.</p>
-      </div>
-      {msg && <div className="message success" style={{ marginBottom: '20px' }}>{msg}</div>}
-      {loading ? <p>Loading deliveries...</p> : (
-        <div className="grid grid-2">
-          {deliveries.length === 0 && (
-            <div className="card empty-state" style={{ gridColumn: '1 / -1', padding: '64px', textAlign: 'center' }}>
-              <Package size={48} style={{ margin: '0 auto 16px', color: 'var(--muted)', opacity: 0.5 }} />
-              <p>No pending deliveries in your area right now.</p>
-            </div>
-          )}
-          {deliveries.map(d => (
-            <div key={d.id} className="card fade-in" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', marginBottom: '4px' }}>Order #{d.id.slice(-6).toUpperCase()}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--muted)' }}>
-                    <Clock size={14} />
-                    <span>Scheduled for {new Date(d.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                </div>
-                <div style={{ padding: '8px', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: '8px' }}>
-                  <Package size={20} />
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <MapPin size={16} style={{ color: 'var(--accent)' }} />
-                  <span style={{ fontSize: '14px' }}>From: {d.restaurantId}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <Navigation size={16} style={{ color: 'var(--verified)' }} />
-                  <span style={{ fontSize: '14px' }}>To User: {d.userId}</span>
-                </div>
-              </div>
-
-              <Button className="w-full" size="lg" onClick={() => pickUp(d.id)}>
-                Accept & Pick Up
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function MyDeliveries() {
   const [deliveries, setDeliveries] = useState([])
   const [loading, setLoading] = useState(true)
@@ -600,6 +503,8 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [activeTab, setActiveTab] = useState('dashboard')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const { addToast } = useToast()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -624,6 +529,26 @@ export default function App() {
     checkAuth()
   }, [])
 
+  useEffect(() => {
+    if (authed && user) {
+      const pollNotifications = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/notifications?dpId=${user.id || user._id}`)
+          const data = await res.json()
+          if (data.length > notifications.length) {
+            const latest = data[0]
+            if (latest && !notifications.find(n => n.id === latest.id)) {
+              addToast(latest.title, 'success')
+            }
+          }
+          setNotifications(data)
+        } catch (e) {}
+      }
+      const t = setInterval(pollNotifications, 10000)
+      return () => clearInterval(t)
+    }
+  }, [authed, user, notifications])
+
   const handleLogin = (data) => {
     setUser(data)
     setAuthed(true)
@@ -640,8 +565,7 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'available', label: 'Available Orders', icon: ShoppingBag },
-    { id: 'my-orders', label: 'My Deliveries', icon: Truck },
+    { id: 'my-orders', label: 'Assigned Orders', icon: Truck },
   ]
 
   return (
@@ -683,7 +607,6 @@ export default function App() {
 
       <main className="main-content">
         {activeTab === 'dashboard' && <DashboardView user={user} />}
-        {activeTab === 'available' && <AvailableDeliveries />}
         {activeTab === 'my-orders' && <MyDeliveries />}
         
         <footer className="footer" style={{ marginTop: 'auto', paddingTop: '40px' }}>

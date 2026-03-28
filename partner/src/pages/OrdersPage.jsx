@@ -99,33 +99,19 @@ export default function OrdersPage({ partnerId }) {
               
               <div className="form-actions" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                 {o.status === 'PLACED' && (
-                  <Button onClick={() => updateStatus(o.id, 'ACCEPTED')} size="lg" style={{ flex: 1 }}>Accept Order</Button>
+                  <Button onClick={() => updateStatus(o.id, 'ACCEPTED')} size="sm">Accept Order</Button>
                 )}
-                {o.status === 'ACCEPTED' && (
-                  <Button onClick={() => updateStatus(o.id, 'PREPARING')} size="lg" style={{ flex: 1 }}>Start Preparing</Button>
+                {['ACCEPTED', 'PREPARING'].includes(o.status) && (
+                  <Button onClick={() => updateStatus(o.id, 'READY')} size="sm" variant="primary">Mark as Ready</Button>
                 )}
-                {o.status === 'PREPARING' && (
-                  <Button onClick={() => updateStatus(o.id, 'READY')} size="lg" style={{ flex: 1 }}>Mark as Ready</Button>
-                )}
-                
                 {o.status === 'READY' && (
-                  <div style={{ color: 'var(--muted)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
-                    Waiting for delivery partner to accept...
-                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--muted)', fontStyle: 'italic' }}>Waiting for admin to assign delivery partner...</span>
                 )}
                 {o.status === 'ASSIGNED' && (
-                  <div style={{ color: 'var(--accent)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
-                    Delivery partner assigned! Preparing for pickup.
-                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--verified)', fontWeight: 600 }}>Delivery Partner Assigned: {o.deliveryPartnerId}</span>
                 )}
-                {o.status === 'PICKED' && (
-                  <div style={{ color: 'var(--verified)', fontSize: '13px', width: '100%', textAlign: 'center', padding: '12px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius)' }}>
-                    Order picked up by delivery partner.
-                  </div>
-                )}
-
-                {o.status !== 'DELIVERED' && o.status !== 'CANCELLED' && o.status !== 'PICKED' && (
-                  <Button variant="ghost" style={{ color: 'red' }} onClick={() => updateStatus(o.id, 'CANCELLED')}>Cancel Order</Button>
+                {o.status !== 'CANCELLED' && o.status !== 'DELIVERED' && (
+                  <Button onClick={() => updateStatus(o.id, 'CANCELLED')} variant="soft" size="sm">Cancel</Button>
                 )}
               </div>
             </div>

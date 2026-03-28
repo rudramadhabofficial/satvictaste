@@ -190,6 +190,25 @@ export default function App() {
     }
   }
 
+  const handleAssignDP = async (orderId, dpId) => {
+    try {
+      const token = localStorage.getItem('adminToken') || ''
+      const res = await fetch(`${API}/admin/orders/${orderId}/assign`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ deliveryPartnerId: dpId })
+      })
+      if (!res.ok) throw new Error('Assignment failed')
+      addToast('Delivery partner assigned!', 'success')
+      loadOrders()
+    } catch (e) {
+      addToast(e.message, 'error')
+    }
+  }
+
   if (!authed) {
     return (
       <div className="app-wrap">
@@ -448,7 +467,7 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div>
               <h2 style={{ marginBottom: '8px' }}>Order Management</h2>
-              <p style={{ color: 'var(--muted)' }}>Track all orders and delivery progress.</p>
+              <p style={{ color: 'var(--muted)' }}>Track all orders and manually assign delivery partners.</p>
             </div>
 
             <div className="premium-card">
@@ -457,24 +476,50 @@ export default function App() {
                   <thead>
                     <tr>
                       <th>Order ID</th>
-                      <th>Date</th>
+                      <th>Restaurant</th>
                       <th>Amount</th>
                       <th>Status</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
                     {orders.length === 0 ? (
-                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No orders found</td></tr>
+                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No orders found</td></tr>
                     ) : (
                       orders.map(o => (
                         <tr key={o.id}>
                           <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
-                          <td>{new Date(o.createdAt).toLocaleDateString()}</td>
+                          <td>{o.restaurantId}</td>
                           <td style={{ fontWeight: '600' }}>₹{o.totalPrice}</td>
                           <td>
-                            <span className={`badge ${o.status === 'DELIVERED' ? 'badge-active' : 'badge-pending'}`}>
+                            <span className={`badge ${
+                              o.status === 'DELIVERED' ? 'badge-active' : 
+                              o.status === 'READY' ? 'badge-warning' :
+                              o.status === 'ASSIGNED' ? 'badge-info' : 'badge-pending'
+                            }`}>
                               {o.status}
                             </span>
+                          </td>
+                          <td>
+                            {o.status === 'READY' && (
+                              <select 
+                                className="btn btn-soft btn-sm"
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAssignDP(o.id, e.target.value)
+                                  }
+                                }}
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Assign Delivery Partner</option>
+                                {deliveryPartners.filter(dp => dp.verified).map(dp => (
+                                  <option key={dp.id} value={dp.id}>{dp.name}</option>
+                                ))}
+                              </select>
+                            )}
+                            {o.status === 'ASSIGNED' && (
+                              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Assigned to: {o.deliveryPartnerId}</span>
+                            )}
                           </td>
                         </tr>
                       ))
