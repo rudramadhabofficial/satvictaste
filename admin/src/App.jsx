@@ -97,7 +97,8 @@ export default function App() {
   }
 
   const loadRestaurants = () => {
-    fetch(`${API}/restaurants`)
+    const token = localStorage.getItem('adminToken') || ''
+    fetch(`${API}/admin/restaurants`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setRestaurants)
       .catch(() => setRestaurants([]))
@@ -333,13 +334,17 @@ export default function App() {
                     </thead>
                     <tbody>
                       {restaurants.length === 0 ? (
-                        <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--muted)' }}>No restaurants found</td></tr>
+                        <tr><td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No restaurants found</td></tr>
                       ) : (
-                        restaurants.slice(0, 5).map(r => (
-                          <tr key={r._id}>
+                        restaurants.map(r => (
+                          <tr key={r._id || r.id}>
                             <td style={{ fontWeight: '600' }}>{r.name}</td>
-                            <td>{r.city}, {r.area}</td>
-                            <td><span className="badge badge-active">Active</span></td>
+                            <td>{r.city || 'Pending KYC'}</td>
+                            <td>
+                              <span className={`badge ${r.verified ? 'badge-active' : 'badge-pending'}`}>
+                                {r.verified ? 'Live' : 'Pending KYC'}
+                              </span>
+                            </td>
                           </tr>
                         ))
                       )}

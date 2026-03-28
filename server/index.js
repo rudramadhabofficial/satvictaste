@@ -838,6 +838,18 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
+app.get('/api/admin/restaurants', adminAuth, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const list = await Restaurant.find({}).sort({ createdAt: -1 }).lean();
+      return res.json(list.map(r => ({ ...r, id: String(r._id) })));
+    }
+    res.json(sampleData);
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/admin/delivery-partners/:id/verify', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -984,7 +996,7 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       deliveries: 0
     };
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      stats.restaurants = await Restaurant.countDocuments({ verified: true });
+      stats.restaurants = await Restaurant.countDocuments({});
       stats.partners = await PartnerSubmission.countDocuments({});
       stats.deliveryPartners = await DeliveryPartner.countDocuments({});
       stats.deliveries = await Delivery.countDocuments({});
@@ -1093,7 +1105,12 @@ app.get('/api/restaurants', async (req, res) => {
   try {
     const { city, satvikType, q } = req.query;
     const Model = getModel();
-    let results = await Model.find({ verified: true, city, satvikType });
+    
+    const query = { verified: true };
+    if (city && city.trim()) query.city = city;
+    if (satvikType && satvikType.trim()) query.satvikType = satvikType;
+
+    let results = await Model.find(query);
 
     if (q) {
       const ql = String(q).toLowerCase();
@@ -1924,9 +1941,10 @@ app.put('/api/restaurants/:id', async (req, res) => {
     delete updateData.ownerId;
 
     // Check if this is a KYC submission
-    const isKycSubmission = updateData.phone && updateData.city && updateData.address;
+    const isKycSubmission = updateData.phone || updateData.city || updateData.address;
     if (isKycSubmission) {
-      updateData.verified = true; // Auto-verify for now as per user request flow
+      console.log(`[KYC Submission] Auto-verifying restaurant for ID/OwnerID: ${id}`);
+      updateData.verified = true; 
     }
 
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
