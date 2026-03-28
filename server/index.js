@@ -404,14 +404,17 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ error: 'Email required' });
 
-    let u, role;
+    let u;
+    const emailLower = email.toLowerCase();
+    
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      u = await User.findOne({ email: email.toLowerCase() });
-      if (!u) u = await DeliveryPartner.findOne({ email: email.toLowerCase() });
-      // Also check if they are a restaurant owner via User model (partnerId field)
+      u = await User.findOne({ email: emailLower });
+      if (!u) u = await DeliveryPartner.findOne({ email: emailLower });
+      if (!u) u = await Restaurant.findOne({ email: emailLower });
     } else {
-      u = inMemoryUsers.find(x => x.email.toLowerCase() === email.toLowerCase());
-      if (!u) u = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === email.toLowerCase());
+      u = inMemoryUsers.find(x => x.email.toLowerCase() === emailLower);
+      if (!u) u = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === emailLower);
+      if (!u) u = sampleData.find(x => x.email?.toLowerCase() === emailLower);
     }
 
     if (!u) return res.status(404).json({ error: 'User not found' });
@@ -420,12 +423,12 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     console.log(`[AUTH] Generated Reset OTP for ${email}: ${token}`);
     
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      await Verification.findOneAndDelete({ email: email.toLowerCase() });
-      await Verification.create({ email: email.toLowerCase(), token, role: 'reset' });
+      await Verification.findOneAndDelete({ email: emailLower });
+      await Verification.create({ email: emailLower, token, role: 'reset' });
     } else {
-      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === email.toLowerCase());
+      const oldIdx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === emailLower);
       if (oldIdx !== -1) inMemoryVerifications.splice(oldIdx, 1);
-      inMemoryVerifications.push({ email: email.toLowerCase(), token, role: 'reset', createdAt: new Date() });
+      inMemoryVerifications.push({ email: emailLower, token, role: 'reset', createdAt: new Date() });
     }
 
     const html = `
@@ -452,10 +455,12 @@ app.post('/api/auth/reset-password', async (req, res) => {
     if (!email || !token || !newPassword) return res.status(400).json({ error: 'All fields required' });
 
     let verification;
+    const emailLower = email.toLowerCase();
+    
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      verification = await Verification.findOne({ email: email.toLowerCase(), token, role: 'reset' });
+      verification = await Verification.findOne({ email: emailLower, token, role: 'reset' });
     } else {
-      verification = inMemoryVerifications.find(v => v.email.toLowerCase() === email.toLowerCase() && v.token === token && v.role === 'reset');
+      verification = inMemoryVerifications.find(v => v.email.toLowerCase() === emailLower && v.token === token && v.role === 'reset');
     }
 
     if (!verification) return res.status(400).json({ error: 'Invalid or expired code' });
@@ -463,17 +468,22 @@ app.post('/api/auth/reset-password', async (req, res) => {
     const passwordHash = hashPassword(newPassword);
 
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      let u = await User.findOneAndUpdate({ email: email.toLowerCase() }, { passwordHash });
-      if (!u) await DeliveryPartner.findOneAndUpdate({ email: email.toLowerCase() }, { passwordHash });
+      let u = await User.findOneAndUpdate({ email: emailLower }, { passwordHash });
+      if (!u) u = await DeliveryPartner.findOneAndUpdate({ email: emailLower }, { passwordHash });
+      if (!u) u = await Restaurant.findOneAndUpdate({ email: emailLower }, { passwordHash });
       await Verification.findByIdAndDelete(verification._id);
     } else {
-      let u = inMemoryUsers.find(x => x.email.toLowerCase() === email.toLowerCase());
+      let u = inMemoryUsers.find(x => x.email.toLowerCase() === emailLower);
       if (u) u.passwordHash = passwordHash;
       else {
-        let dp = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === email.toLowerCase());
+        let dp = inMemoryDeliveryPartners.find(x => x.email.toLowerCase() === emailLower);
         if (dp) dp.passwordHash = passwordHash;
+        else {
+          let res = sampleData.find(x => x.email?.toLowerCase() === emailLower);
+          if (res) res.passwordHash = passwordHash;
+        }
       }
-      const idx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === email.toLowerCase());
+      const idx = inMemoryVerifications.findIndex(v => v.email.toLowerCase() === emailLower);
       inMemoryVerifications.splice(idx, 1);
     }
 
@@ -2382,13 +2392,22 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
     }
     const { profile, menuItems } = submission;
     
-    // Find owner user by email
+    // Find if a restaurant with this email already exists
     const ownerEmail = profile.email || '';
-    let ownerUser = inMemoryUsers.find(u => u.email.toLowerCase() === ownerEmail.toLowerCase());
-    
+    if (!ownerEmail) return res.status(400).json({ error: 'Owner email missing in submission' });
+
     const RestaurantModel = mongoose.connection.readyState === 1 ? Restaurant : null;
+    
+    // Check if email already registered
+    if (RestaurantModel) {
+      const existing = await Restaurant.findOne({ email: ownerEmail.toLowerCase() });
+      if (existing) return res.status(400).json({ error: 'A restaurant with this email already exists' });
+    }
+
     const restaurantData = {
       name: profile.name || 'Restaurant',
+      email: ownerEmail.toLowerCase(),
+      passwordHash: hashPassword('satvic123'), // Default temporary password
       address: buildAddress(profile),
       city: profile.city || '',
       area: profile.area || profile.city || '',
@@ -2415,11 +2434,12 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
         name: m.name || '',
         description: m.description || '',
         price: Number(m.price) || 0,
+        image: m.image || ''
       })),
       story: profile.notes || '',
       bestTimeToVisit: profile.hours || '',
-      ownerId: ownerUser ? ownerUser.id : undefined,
     };
+
     if (RestaurantModel) {
       const created = await RestaurantModel.create(restaurantData);
       try {
@@ -2431,25 +2451,18 @@ app.post('/api/partners/:id/approve', adminAuth, async (req, res) => {
         console.warn('Update submission status:', upErr.message);
       }
       
-      if (ownerUser) {
-        ownerUser.partnerId = String(created._id);
-      }
-
       return res.json({
         id: String(created._id),
         status: 'approved',
         restaurantId: String(created._id),
       });
     }
+    
     const newRestaurant = { ...restaurantData, _id: String(sampleData.length + 1) };
     sampleData.push(newRestaurant);
     const inMem = inMemorySubmissions.find((s) => s.id === id);
     if (inMem) inMem.status = 'approved';
     
-    if (ownerUser) {
-      ownerUser.partnerId = newRestaurant._id;
-    }
-
     res.json({
       id: submission.id,
       status: 'approved',

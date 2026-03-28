@@ -26,7 +26,7 @@ export default function AccountPage() {
     try {
       const [uRes, sRes, bRes, oRes] = await Promise.all([
         fetch(`${API_BASE}/api/auth/me`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
         }),
         fetch(`${API_BASE}/api/users/${userId}/subscriptions`),
         fetch(`${API_BASE}/api/users/${userId}/bookings`),

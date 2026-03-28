@@ -58,6 +58,7 @@ export default function App() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(false)
   const [issues, setIssues] = useState([])
+  const [selectedItem, setSelectedItem] = useState(null) // { type: 'restaurant' | 'dp', data: object }
 
   useEffect(() => {
     const t = localStorage.getItem('adminToken')
@@ -338,8 +339,147 @@ export default function App() {
     )
   }
 
+  const DetailModal = () => {
+    if (!selectedItem) return null
+    const { type, data } = selectedItem
+    
+    return (
+      <div className="modal-overlay" style={{ 
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', 
+        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px'
+      }} onClick={() => setSelectedItem(null)}>
+        <div className="premium-card fade-in" style={{ 
+          maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+          position: 'relative'
+        }} onClick={e => e.stopPropagation()}>
+          <button 
+            style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
+            onClick={() => setSelectedItem(null)}
+          >
+            <X size={24} />
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ width: '64px', height: '64px', background: 'var(--accent-soft)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+              {type === 'restaurant' ? <LayoutDashboard size={32} /> : <Truck size={32} />}
+            </div>
+            <div>
+              <h2 style={{ margin: 0 }}>{data.name}</h2>
+              <span className={`badge ${data.verified ? 'badge-active' : 'badge-pending'}`}>
+                {data.verified ? 'Verified' : 'Pending Verification'}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '24px' }}>
+            <section>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>Contact Information</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Email Address</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.email}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Phone Number</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.phone || 'Not provided'}</div>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>Location Details</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>City</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.city || 'Not provided'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Area</div>
+                  <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.area || 'Not provided'}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: '12px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Full Address</div>
+                <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.address || 'Not provided'}</div>
+              </div>
+            </section>
+
+            {type === 'restaurant' && (
+              <>
+                <section>
+                  <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>About Restaurant</h4>
+                  <div style={{ fontSize: '14px', color: 'var(--text-strong)', lineHeight: 1.5 }}>{data.story || 'No story provided.'}</div>
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Type</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.satvikType || 'N/A'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '11px', color: 'var(--muted)', marginBottom: '4px' }}>Price Range</div>
+                      <div style={{ fontSize: '14px', fontWeight: '500' }}>{data.priceRange || 'N/A'}</div>
+                    </div>
+                  </div>
+                </section>
+                
+                {data.menu && data.menu.length > 0 && (
+                  <section>
+                    <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>Menu Preview</h4>
+                    <div style={{ display: 'grid', gap: '10px' }}>
+                      {data.menu.map((m, i) => (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', background: 'var(--bg-subtle)', borderRadius: '8px' }}>
+                          <div>
+                            <div style={{ fontWeight: '600', fontSize: '14px' }}>{m.name}</div>
+                            <div style={{ fontSize: '12px', color: 'var(--muted)' }}>{m.description}</div>
+                          </div>
+                          <div style={{ fontWeight: '700', color: 'var(--accent)' }}>₹{m.price}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+
+            {type === 'dp' && (
+              <section>
+                <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--muted)', marginBottom: '12px', letterSpacing: '0.05em' }}>Assigned Restaurants</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {(data.assignedRestaurants || []).length === 0 ? (
+                    <span style={{ fontSize: '14px', color: 'var(--muted)' }}>No restaurants assigned.</span>
+                  ) : (
+                    data.assignedRestaurants.map(rid => {
+                      const rest = restaurants.find(x => x.id === rid || x._id === rid);
+                      return <span key={rid} className="badge badge-info">{rest ? rest.name : rid}</span>
+                    })
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <div style={{ marginTop: '32px', display: 'flex', gap: '12px' }}>
+            {type === 'restaurant' && !data.verified && (
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { handleVerifyRestaurant(data._id || data.id); setSelectedItem(null); }}>
+                Approve Restaurant
+              </button>
+            )}
+            {type === 'dp' && !data.verified && (
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { handleVerifyDP(data._id || data.id); setSelectedItem(null); }}>
+                Verify Partner
+              </button>
+            )}
+            <button className="btn btn-soft" style={{ flex: 1 }} onClick={() => setSelectedItem(null)}>Close</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-wrap">
+      <DetailModal />
       <Header authed={authed} onLogout={logout} setTab={setTab} activeTab={tab} />
       <main className="container fade-in">
         
@@ -409,25 +549,33 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody>
-                          {orders.filter(o => o.status === 'READY').map(o => (
-                            <tr key={o.id}>
-                              <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
-                              <td>{o.restaurantId}</td>
-                              <td>₹{o.totalPrice}</td>
-                              <td>
-                                <select 
-                                  className="btn btn-primary btn-sm"
-                                  onChange={(e) => handleAssignDP(o.id, e.target.value)}
-                                  defaultValue=""
+                          {orders.filter(o => o.status === 'READY').map(o => {
+                            const rest = restaurants.find(r => r.id === o.restaurantId || r._id === o.restaurantId);
+                            return (
+                              <tr key={o.id}>
+                                <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
+                                <td 
+                                  style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: '500' }}
+                                  onClick={() => rest && setSelectedItem({ type: 'restaurant', data: rest })}
                                 >
-                                  <option value="" disabled>Choose Partner</option>
-                                  {deliveryPartners.filter(dp => dp.verified).map(dp => (
-                                    <option key={dp.id || dp._id} value={dp.id || dp._id}>{dp.name}</option>
-                                  ))}
-                                </select>
-                              </td>
-                            </tr>
-                          ))}
+                                  {rest ? rest.name : o.restaurantId}
+                                </td>
+                                <td>₹{o.totalPrice}</td>
+                                <td>
+                                  <select 
+                                    className="btn btn-primary btn-sm"
+                                    onChange={(e) => handleAssignDP(o.id, e.target.value)}
+                                    defaultValue=""
+                                  >
+                                    <option value="" disabled>Choose Partner</option>
+                                    {deliveryPartners.filter(dp => dp.verified).map(dp => (
+                                      <option key={dp.id || dp._id} value={dp.id || dp._id}>{dp.name}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -454,8 +602,8 @@ export default function App() {
                           <tr><td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No restaurants found</td></tr>
                         ) : (
                           restaurants.map(r => (
-                            <tr key={r._id || r.id}>
-                              <td style={{ fontWeight: '600' }}>{r.name}</td>
+                            <tr key={r._id || r.id} onClick={() => setSelectedItem({ type: 'restaurant', data: r })} style={{ cursor: 'pointer' }}>
+                              <td style={{ fontWeight: '600', color: 'var(--accent)' }}>{r.name}</td>
                               <td>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {(r.assignedDeliveryPartners || []).length === 0 ? (
@@ -466,7 +614,7 @@ export default function App() {
                                       return (
                                         <span key={dpId} className="badge badge-info" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                           {dp ? dp.name : 'Unknown DP'}
-                                          <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleUnassignDP(r._id || r.id, dpId)} />
+                                          <X size={12} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleUnassignDP(r._id || r.id, dpId); }} />
                                         </span>
                                       );
                                     })
@@ -476,6 +624,7 @@ export default function App() {
                               <td>
                                 <select 
                                   className="btn btn-soft btn-sm"
+                                  onClick={(e) => e.stopPropagation()}
                                   onChange={(e) => {
                                     if (e.target.value) {
                                       handleAssignDPToRestaurant(r._id || r.id, e.target.value)
@@ -570,8 +719,8 @@ export default function App() {
                         <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No verified restaurants found</td></tr>
                       ) : (
                         restaurants.map(r => (
-                          <tr key={r._id}>
-                            <td style={{ fontWeight: '600' }}>{r.name}</td>
+                          <tr key={r._id || r.id} onClick={() => setSelectedItem({ type: 'restaurant', data: r })} style={{ cursor: 'pointer' }}>
+                            <td style={{ fontWeight: '600', color: 'var(--accent)' }}>{r.name}</td>
                             <td>{r.city || 'Pending KYC'}</td>
                             <td>{r.phone || 'Pending KYC'}</td>
                             <td>
@@ -582,7 +731,7 @@ export default function App() {
                                 {!r.verified && (
                                   <button 
                                     className="btn btn-soft btn-sm" 
-                                    onClick={() => handleVerifyRestaurant(r._id || r.id)}
+                                    onClick={(e) => { e.stopPropagation(); handleVerifyRestaurant(r._id || r.id); }}
                                     title="Verify and make live"
                                   >
                                     Approve
@@ -671,49 +820,63 @@ export default function App() {
                       <th>Action</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {orders.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No orders found</td></tr>
-                    ) : (
-                      orders.map(o => (
-                        <tr key={o.id}>
-                          <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
-                          <td>{o.restaurantId}</td>
-                          <td style={{ fontWeight: '600' }}>₹{o.totalPrice}</td>
-                          <td>
-                            <span className={`badge ${
-                              o.status === 'DELIVERED' ? 'badge-active' : 
-                              o.status === 'READY' ? 'badge-warning' :
-                              o.status === 'ASSIGNED' ? 'badge-info' : 'badge-pending'
-                            }`}>
-                              {o.status}
-                            </span>
-                          </td>
-                          <td>
-                            {o.status === 'READY' && (
-                              <select 
-                                className="btn btn-soft btn-sm"
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleAssignDP(o.id, e.target.value)
-                                  }
-                                }}
-                                defaultValue=""
+                    <tbody>
+                      {orders.length === 0 ? (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No orders found</td></tr>
+                      ) : (
+                        orders.map(o => {
+                          const rest = restaurants.find(r => r.id === o.restaurantId || r._id === o.restaurantId);
+                          const dp = deliveryPartners.find(x => x.id === o.deliveryPartnerId || x._id === o.deliveryPartnerId);
+                          return (
+                            <tr key={o.id}>
+                              <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
+                              <td 
+                                style={{ color: 'var(--accent)', cursor: 'pointer', fontWeight: '500' }}
+                                onClick={() => rest && setSelectedItem({ type: 'restaurant', data: rest })}
                               >
-                                <option value="" disabled>Assign Delivery Partner</option>
-                                {deliveryPartners.filter(dp => dp.verified).map(dp => (
-                                  <option key={dp.id} value={dp.id}>{dp.name}</option>
-                                ))}
-                              </select>
-                            )}
-                            {o.status === 'ASSIGNED' && (
-                              <span style={{ fontSize: '12px', color: 'var(--muted)' }}>Assigned to: {o.deliveryPartnerId}</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
+                                {rest ? rest.name : o.restaurantId}
+                              </td>
+                              <td style={{ fontWeight: '600' }}>₹{o.totalPrice}</td>
+                              <td>
+                                <span className={`badge ${
+                                  o.status === 'DELIVERED' ? 'badge-active' : 
+                                  o.status === 'READY' ? 'badge-warning' :
+                                  o.status === 'ASSIGNED' ? 'badge-info' : 'badge-pending'
+                                }`}>
+                                  {o.status}
+                                </span>
+                              </td>
+                              <td>
+                                {o.status === 'READY' && (
+                                  <select 
+                                    className="btn btn-soft btn-sm"
+                                    onChange={(e) => {
+                                      if (e.target.value) {
+                                        handleAssignDP(o.id, e.target.value)
+                                      }
+                                    }}
+                                    defaultValue=""
+                                  >
+                                    <option value="" disabled>Assign Delivery Partner</option>
+                                    {deliveryPartners.filter(dp => dp.verified).map(dp => (
+                                      <option key={dp.id} value={dp.id}>{dp.name}</option>
+                                    ))}
+                                  </select>
+                                )}
+                                {['ASSIGNED', 'PICKED', 'DELIVERED'].includes(o.status) && dp && (
+                                  <span 
+                                    style={{ fontSize: '12px', color: 'var(--accent)', cursor: 'pointer', fontWeight: '600' }}
+                                    onClick={() => setSelectedItem({ type: 'dp', data: dp })}
+                                  >
+                                    DP: {dp.name}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
                 </table>
               </div>
             </div>
@@ -772,8 +935,8 @@ export default function App() {
                         <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No delivery partners found</td></tr>
                       ) : (
                         deliveryPartners.map(dp => (
-                          <tr key={dp.id || dp._id}>
-                            <td style={{ fontWeight: '600' }}>{dp.name}</td>
+                          <tr key={dp.id || dp._id} onClick={() => setSelectedItem({ type: 'dp', data: dp })} style={{ cursor: 'pointer' }}>
+                            <td style={{ fontWeight: '600', color: 'var(--accent)' }}>{dp.name}</td>
                             <td>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                 {(dp.assignedRestaurants || []).length === 0 ? (
@@ -784,7 +947,7 @@ export default function App() {
                                     return (
                                       <span key={rid} className="badge badge-info" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                         {rest ? rest.name : 'Unknown Hotel'}
-                                        <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleUnassignDP(rid, dp.id || dp._id)} />
+                                        <X size={12} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); handleUnassignDP(rid, dp.id || dp._id); }} />
                                       </span>
                                     );
                                   })
@@ -797,13 +960,14 @@ export default function App() {
                                   {dp.verified ? 'Verified' : 'Pending'}
                                 </span>
                                 {!dp.verified && (
-                                  <button className="btn btn-soft btn-sm" onClick={() => handleVerifyDP(dp.id)}>Approve</button>
+                                  <button className="btn btn-soft btn-sm" onClick={(e) => { e.stopPropagation(); handleVerifyDP(dp.id); }}>Approve</button>
                                 )}
                               </div>
                             </td>
                             <td>
                               <select 
                                 className="btn btn-soft btn-sm"
+                                onClick={(e) => e.stopPropagation()}
                                 onChange={(e) => {
                                   if (e.target.value) {
                                     handleAssignDPToRestaurant(e.target.value, dp.id || dp._id)

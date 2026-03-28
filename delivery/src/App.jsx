@@ -421,6 +421,7 @@ function DashboardView({ user }) {
   const [stats, setStats] = useState({ totalDeliveries: 0, pendingDeliveries: 0 })
   const [assignedHotels, setAssignedHotels] = useState([])
   const [loadingHotels, setLoadingLoadingHotels] = useState(true)
+  const [selectedHotel, setSelectedHotel] = useState(null)
 
   useEffect(() => {
     const loadStats = async () => {
@@ -456,8 +457,81 @@ function DashboardView({ user }) {
     loadAssignedHotels()
   }, [])
 
+  const HotelDetailModal = () => {
+    if (!selectedHotel) return null
+    return (
+      <div className="modal-overlay" style={{ 
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', 
+        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px'
+      }} onClick={() => setSelectedHotel(null)}>
+        <div className="card fade-in" style={{ 
+          maxWidth: '500px', width: '100%', maxHeight: '90vh', overflowY: 'auto',
+          position: 'relative', padding: '32px'
+        }} onClick={e => e.stopPropagation()}>
+          <button 
+            style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
+            onClick={() => setSelectedHotel(null)}
+          >
+            <X size={24} />
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ width: '56px', height: '56px', background: 'var(--accent-soft)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
+              <MapPin size={28} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '24px' }}>{selectedHotel.name}</h2>
+              <span className="badge badge-verified">Partner Hotel</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: '20px' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>Location Info</div>
+              <div style={{ fontSize: '15px', color: 'var(--text-strong)', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <MapPin size={16} style={{ marginTop: '2px', color: 'var(--accent)' }} />
+                <span>{selectedHotel.address}<br/>{selectedHotel.area}, {selectedHotel.city}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>Contact</div>
+                <div style={{ fontSize: '15px', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Phone size={16} style={{ color: 'var(--accent)' }} />
+                  <span>{selectedHotel.phone}</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>Timing</div>
+                <div style={{ fontSize: '15px', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={16} style={{ color: 'var(--accent)' }} />
+                  <span>{selectedHotel.bestTimeToVisit || 'Open Now'}</span>
+                </div>
+              </div>
+            </div>
+
+            {selectedHotel.story && (
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px', fontWeight: 600 }}>Notes</div>
+                <div style={{ fontSize: '14px', color: 'var(--muted)', lineHeight: 1.5 }}>{selectedHotel.story}</div>
+              </div>
+            )}
+          </div>
+
+          <Button className="w-full" style={{ marginTop: '32px' }} onClick={() => setSelectedHotel(null)}>
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="view-content">
+      <HotelDetailModal />
       <div className="view-header" style={{ marginBottom: '40px' }}>
         <h2 className="view-title">Welcome back, {user.name}</h2>
         <p style={{ color: 'var(--muted)', marginTop: '4px' }}>Here's your delivery summary and assigned hotels.</p>
@@ -522,8 +596,8 @@ function DashboardView({ user }) {
                     <tr><td colSpan="3" style={{ textAlign: 'center', padding: '32px', color: 'var(--muted)' }}>No hotels assigned to you yet.</td></tr>
                   ) : (
                     assignedHotels.map(h => (
-                      <tr key={h.id || h._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '16px 0', fontWeight: '600' }}>{h.name}</td>
+                      <tr key={h.id || h._id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }} onClick={() => setSelectedHotel(h)}>
+                        <td style={{ padding: '16px 0', fontWeight: '600', color: 'var(--accent)' }}>{h.name}</td>
                         <td style={{ color: 'var(--muted)', fontSize: '14px' }}>{h.area}, {h.city}</td>
                         <td style={{ fontSize: '14px' }}>{h.phone}</td>
                       </tr>
