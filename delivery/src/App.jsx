@@ -12,7 +12,10 @@ function LandingHeader() {
       <div className="header-inner">
         <div className="header-brand">
           <img src="/logo.png" alt="SatvicTaste" className="header-logo" />
-          <span className="header-title">delivery.satvictaste</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span className="header-title">delivery.satvictaste</span>
+            <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 6px', borderRadius: '4px' }}>Premium</span>
+          </div>
         </div>
         <nav className="nav">
           <a href="#how">How it works</a>
