@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { 
   Users, 
   Truck, 
@@ -78,9 +79,9 @@ export default function DashboardPage({ partnerId }) {
           <p style={{ color: 'var(--muted)', maxWidth: '500px', margin: '0 auto 32px', fontSize: '16px', lineHeight: 1.6 }}>
             Welcome to SatvicTaste! To start receiving orders and bookings, please complete your restaurant profile. Once filled, our team will verify your details.
           </p>
-          <a href="/profile" className="btn btn-primary btn-lg" style={{ padding: '16px 40px' }}>
+          <Link to="/profile" className="btn btn-primary btn-lg" style={{ padding: '16px 40px' }}>
             Fill KYC Details
-          </a>
+          </Link>
         </div>
       </div>
     )

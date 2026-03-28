@@ -838,6 +838,48 @@ app.post('/api/admin/login', (req, res) => {
   }
 });
 
+app.post('/api/admin/delivery-partners/:id/verify', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const doc = await DeliveryPartner.findByIdAndUpdate(id, { verified: true }, { new: true });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+      res.json(doc);
+    } else {
+      const idx = inMemoryDeliveryPartners.findIndex(d => d.id === id);
+      if (idx !== -1) {
+        inMemoryDeliveryPartners[idx].verified = true;
+        res.json(inMemoryDeliveryPartners[idx]);
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/restaurants/:id/verify', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const doc = await Restaurant.findByIdAndUpdate(id, { verified: true }, { new: true });
+      if (!doc) return res.status(404).json({ error: 'Not found' });
+      res.json(doc);
+    } else {
+      const idx = sampleData.findIndex(r => r._id === id);
+      if (idx !== -1) {
+        sampleData[idx].verified = true;
+        res.json(sampleData[idx]);
+      } else {
+        res.status(404).json({ error: 'Not found' });
+      }
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/admin/partners/create', adminAuth, async (req, res) => {
   try {
     const { email, name, password } = req.body || {};

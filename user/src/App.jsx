@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import './index.css'
+import { useToast } from './components/ui/toast'
 
 // Layouts
 import MainLayout from './layouts/MainLayout.jsx'
@@ -19,9 +20,34 @@ import { LoginPage, SignupPage, VerifyPage, ForgotPasswordPage, ResetPasswordPag
 // Components
 import { CartDrawer } from './components/CartDrawer.jsx'
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
+
 export default function App() {
   const [cart, setCart] = useState([])
   const [isCartOpen, setIsCartOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const { addToast } = useToast()
+  const userId = localStorage.getItem('userId')
+
+  useEffect(() => {
+    if (userId) {
+      const pollNotifications = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/api/notifications?userId=${userId}`)
+          const data = await res.json()
+          if (data.length > notifications.length) {
+            const latest = data[0]
+            if (latest && !notifications.find(n => n.id === latest.id)) {
+              addToast(latest.title, 'success')
+            }
+          }
+          setNotifications(data)
+        } catch (e) {}
+      }
+      const t = setInterval(pollNotifications, 10000)
+      return () => clearInterval(t)
+    }
+  }, [userId, notifications])
 
   const onAddToCart = (item, restaurantId) => {
     setCart(prev => {

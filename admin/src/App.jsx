@@ -190,6 +190,36 @@ export default function App() {
     }
   }
 
+  const handleVerifyDP = async (id) => {
+    try {
+      const token = localStorage.getItem('adminToken') || ''
+      const res = await fetch(`${API}/admin/delivery-partners/${id}/verify`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Verification failed')
+      addToast('Delivery partner verified!', 'success')
+      loadDeliveryPartners()
+    } catch (e) {
+      addToast(e.message, 'error')
+    }
+  }
+
+  const handleVerifyRestaurant = async (id) => {
+    try {
+      const token = localStorage.getItem('adminToken') || ''
+      const res = await fetch(`${API}/admin/restaurants/${id}/verify`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!res.ok) throw new Error('Verification failed')
+      addToast('Restaurant verified and live!', 'success')
+      loadRestaurants()
+    } catch (e) {
+      addToast(e.message, 'error')
+    }
+  }
+
   const handleAssignDP = async (orderId, dpId) => {
     try {
       const token = localStorage.getItem('adminToken') || ''
@@ -397,9 +427,20 @@ export default function App() {
                             <td>{r.city || 'Pending KYC'}</td>
                             <td>{r.phone || 'Pending KYC'}</td>
                             <td>
-                              <span className={`badge ${r.verified ? 'badge-active' : 'badge-pending'}`}>
-                                {r.verified ? 'Live' : 'Pending KYC'}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className={`badge ${r.verified ? 'badge-active' : 'badge-pending'}`}>
+                                  {r.verified ? 'Live' : 'Pending KYC'}
+                                </span>
+                                {!r.verified && (
+                                  <button 
+                                    className="btn btn-soft btn-sm" 
+                                    onClick={() => handleVerifyRestaurant(r._id || r.id)}
+                                    title="Verify and make live"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -559,9 +600,14 @@ export default function App() {
                           <td>{dp.email}</td>
                           <td>{dp.city}</td>
                           <td>
-                            <span className={`badge ${dp.verified ? 'badge-active' : 'badge-pending'}`}>
-                              {dp.verified ? 'Verified' : 'Pending'}
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className={`badge ${dp.verified ? 'badge-active' : 'badge-pending'}`}>
+                                {dp.verified ? 'Verified' : 'Pending'}
+                              </span>
+                              {!dp.verified && (
+                                <button className="btn btn-soft btn-sm" onClick={() => handleVerifyDP(dp.id)}>Approve</button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))

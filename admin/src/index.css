@@ -225,8 +225,11 @@ tr:hover td { background: var(--bg-subtle); }
   font-weight: 600;
   display: inline-flex;
 }
-.badge-pending { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
-.badge-active { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.badge-active { background: #E6F4EA; color: #1E7E34; border: 1px solid #CEEAD6; }
+.badge-pending { background: #FEF7E0; color: #B05E00; border: 1px solid #FEEFC3; }
+.badge-warning { background: #FFF4E5; color: #663C00; border: 1px solid #FFE2CC; }
+.badge-info { background: #E8F0FE; color: #1967D2; border: 1px solid #D2E3FC; }
+.badge-error { background: #FCE8E6; color: #C5221F; border: 1px solid #FAD2CF; }
 .badge-rejected { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
 @media (max-width: 640px) {
