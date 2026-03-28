@@ -37,7 +37,6 @@ export function Footer() {
     <footer className="footer">
       <div className="footer-inner">
         <span className="footer-left">Satvic Partner • Build trust with a clean, calm profile</span>
-        <span className="footer-right">Developed by <a href="https://www.linkedin.com/in/uddhab-das-645990237" target="_blank" rel="noopener noreferrer">Uddhab Das</a></span>
       </div>
     </footer>
   )

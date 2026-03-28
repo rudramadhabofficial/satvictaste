@@ -264,7 +264,6 @@ function Footer() {
     <footer className="footer">
       <div className="footer-inner">
         <span className="footer-left">Satvic Delivery • Delivering more than just food</span>
-        <span className="footer-right">Developed by <a href="https://www.linkedin.com/in/uddhab-das-645990237" target="_blank" rel="noopener noreferrer">Uddhab Das</a></span>
       </div>
     </footer>
   )
@@ -690,7 +689,6 @@ export default function App() {
         <footer className="footer" style={{ marginTop: 'auto', paddingTop: '40px' }}>
           <div className="footer-inner">
             <span className="footer-left">Satvic Delivery • Purity in every step</span>
-            <span className="footer-right">Developed by <a href="https://www.linkedin.com/in/uddhab-das-645990237" target="_blank" rel="noopener noreferrer">Uddhab Das</a></span>
           </div>
         </footer>
       </main>
