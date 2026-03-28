@@ -1915,8 +1915,14 @@ app.get('/api/restaurants/nearby', async (req, res) => {
 app.put('/api/restaurants/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
     
+    // Strip restricted fields
+    delete updateData._id;
+    delete updateData.id;
+    delete updateData.__v;
+    delete updateData.ownerId;
+
     // Check if this is a KYC submission
     const isKycSubmission = updateData.phone && updateData.city && updateData.address;
     if (isKycSubmission) {
@@ -1924,11 +1930,18 @@ app.put('/api/restaurants/:id', async (req, res) => {
     }
 
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      const doc = await Restaurant.findByIdAndUpdate(id, updateData, { new: true });
-      if (!doc) return res.status(404).json({ error: 'Not found' });
+      // Try finding by _id first, then by ownerId
+      let doc = await Restaurant.findByIdAndUpdate(id, updateData, { new: true });
+      if (!doc) {
+        doc = await Restaurant.findOneAndUpdate({ ownerId: id }, updateData, { new: true });
+      }
+      
+      if (!doc) return res.status(404).json({ error: 'Restaurant not found' });
       res.json(doc);
     } else {
-      const idx = sampleData.findIndex(r => r._id === id);
+      let idx = sampleData.findIndex(r => r._id === id);
+      if (idx === -1) idx = sampleData.findIndex(r => r.ownerId === id);
+
       if (idx !== -1) {
         sampleData[idx] = { ...sampleData[idx], ...updateData };
         res.json(sampleData[idx]);
@@ -1937,6 +1950,7 @@ app.put('/api/restaurants/:id', async (req, res) => {
       }
     }
   } catch (e) {
+    console.error("PUT /api/restaurants/:id error:", e.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -1967,11 +1981,19 @@ app.get('/api/restaurants/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      const restaurant = await Restaurant.findById(id).lean();
+      // Try finding by _id first, then by ownerId
+      let restaurant = await Restaurant.findById(id).lean();
+      if (!restaurant) {
+        restaurant = await Restaurant.findOne({ ownerId: id }).lean();
+      }
+      
       if (!restaurant) return res.status(404).json({ error: 'Not found' });
       return res.json({ ...restaurant, id: String(restaurant._id) });
     }
-    const restaurant = sampleData.find((r) => r._id === id);
+    
+    let restaurant = sampleData.find((r) => r._id === id);
+    if (!restaurant) restaurant = sampleData.find((r) => r.ownerId === id);
+    
     if (!restaurant) return res.status(404).json({ error: 'Not found' });
     res.json(restaurant);
   } catch (e) {
