@@ -2,6 +2,16 @@ import React, { useState } from 'react'
 import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
 import { useToast } from '../components/ui/toast'
+import { 
+  ShieldCheck, 
+  BarChart3, 
+  Zap, 
+  ArrowRight,
+  ArrowLeft,
+  Mail,
+  Lock,
+  CheckCircle2
+} from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
@@ -41,21 +51,41 @@ function LoginCard({ onLogin, setView }) {
   }
 
   return (
-    <div className="card card-submit fade-in" style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <h3 className="form-section-title">Partner Login</h3>
+    <div className="card card-submit fade-in" style={{ maxWidth: '440px', margin: '0 auto', textAlign: 'left' }}>
+      <h3 className="form-section-title" style={{ textAlign: 'center', marginBottom: '24px' }}>Partner Login</h3>
       <form onSubmit={handleLogin}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Email</label>
-          <UiInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="partner@example.com" required />
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)' }}>Email Address</label>
+          <div style={{ position: 'relative' }}>
+            <Mail size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+            <UiInput 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              placeholder="partner@example.com" 
+              style={{ paddingLeft: '40px' }}
+              required 
+            />
+          </div>
         </div>
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Password</label>
-          <UiInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)' }}>Password</label>
+          <div style={{ position: 'relative' }}>
+            <Lock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+            <UiInput 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              placeholder="••••••••" 
+              style={{ paddingLeft: '40px' }}
+              required 
+            />
+          </div>
         </div>
-        <div style={{ marginBottom: '20px', textAlign: 'right' }}>
-          <button type="button" className="text-link" style={{ fontSize: '13px', color: 'var(--muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setView('forgot')}>Forgot password?</button>
+        <div style={{ marginBottom: '24px', textAlign: 'right' }}>
+          <button type="button" className="text-link" style={{ fontSize: '13px', color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }} onClick={() => setView('forgot')}>Forgot password?</button>
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? 'Logging in...' : 'Login to Dashboard'}
         </Button>
       </form>
@@ -92,18 +122,24 @@ function ForgotPasswordCard({ setView }) {
   }
 
   return (
-    <div className="card card-submit fade-in" style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <h3 className="form-section-title">Forgot Password</h3>
-      <p style={{ marginBottom: '20px', color: 'var(--muted)', fontSize: '14px', textAlign: 'center' }}>Enter your registered email to receive a reset code.</p>
+    <div className="card card-submit fade-in" style={{ maxWidth: '440px', margin: '0 auto', textAlign: 'left' }}>
+      <button 
+        type="button" 
+        onClick={() => setView('login')} 
+        style={{ background: 'none', border: 'none', color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer', marginBottom: '16px', padding: 0 }}
+      >
+        <ArrowLeft size={14} /> Back to Login
+      </button>
+      <h3 className="form-section-title" style={{ marginBottom: '12px' }}>Forgot Password</h3>
+      <p style={{ marginBottom: '24px', color: 'var(--muted)', fontSize: '14px' }}>Enter your registered email to receive a 4-digit reset code.</p>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Email Address</label>
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)' }}>Email Address</label>
           <UiInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" required />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? 'Sending code...' : 'Send Reset Code'}
         </Button>
-        <button type="button" className="w-full btn-soft" style={{ marginTop: '12px' }} onClick={() => setView('login')}>Back to Login</button>
       </form>
     </div>
   )
@@ -141,23 +177,23 @@ function ResetPasswordCard({ setView }) {
   }
 
   return (
-    <div className="card card-submit" style={{ maxWidth: '400px', margin: '0 auto' }}>
-      <h3 className="form-section-title">Reset Password</h3>
-      {msg && <div className="message error">{msg}</div>}
+    <div className="card card-submit" style={{ maxWidth: '440px', margin: '0 auto', textAlign: 'left' }}>
+      <h3 className="form-section-title" style={{ marginBottom: '24px' }}>Reset Password</h3>
+      {msg && <div className="message error" style={{ marginBottom: '20px' }}>{msg}</div>}
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Email</label>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>Email Address</label>
           <UiInput type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>Reset Code</label>
-          <UiInput value={token} onChange={(e) => setToken(e.target.value)} maxLength={4} required />
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>Reset Code</label>
+          <UiInput value={token} onChange={(e) => setToken(e.target.value)} placeholder="4-digit code" maxLength={4} required />
         </div>
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500 }}>New Password</label>
-          <UiInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 600 }}>New Password</label>
+          <UiInput type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" required />
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" size="lg" disabled={loading}>
           {loading ? 'Updating...' : 'Update Password'}
         </Button>
       </form>
@@ -169,52 +205,71 @@ export default function LandingPage({ onLogin }) {
   const [view, setView] = useState('login')
 
   return (
-    <div className="container">
-      <section className="hero-block" style={{ textAlign: 'center', padding: '100px 0' }}>
-        <h1 className="hero-title" style={{ fontSize: '56px', letterSpacing: '-0.03em' }}>Grow your Restaurant with SatvicTaste</h1>
-        <p className="hero-sub" style={{ fontSize: '20px', maxWidth: '640px', margin: '24px auto', opacity: 0.8 }}>Join the most trusted platform for Satvik and Jain-friendly dining. Reach seekers who value purity and quality.</p>
-        <div className="hero-actions" style={{ justifyContent: 'center', marginTop: '40px', display: 'flex', gap: '16px' }}>
-          <a href="#login-section" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '16px' }}>Get Started</a>
-          <a href="#benefits" className="btn btn-soft" style={{ padding: '16px 40px', fontSize: '16px' }}>Learn More</a>
+    <div className="container" style={{ paddingBottom: '80px' }}>
+      <section className="hero-block" style={{ textAlign: 'center', padding: '120px 20px', borderRadius: '0 0 var(--radius-xl) var(--radius-xl)', margin: '0 -20px var(--space-8)' }}>
+        <h1 className="hero-title" style={{ fontSize: 'clamp(2.5rem, 6vw, 4rem)', lineHeight: 1.1, marginBottom: '24px' }}>Grow your Restaurant with <span className="text-accent">SatvicTaste</span></h1>
+        <p className="hero-sub" style={{ fontSize: 'clamp(1rem, 2vw, 1.25rem)', maxWidth: '680px', margin: '0 auto 48px', color: 'var(--muted)' }}>Join the most trusted platform for Satvik and Jain-friendly dining. Reach seekers who value purity, consciousness, and quality.</p>
+        <div className="hero-actions" style={{ justifyContent: 'center' }}>
+          <a href="#login-section" className="btn btn-primary" style={{ padding: '18px 48px', fontSize: '16px' }}>Get Started <ArrowRight size={18} /></a>
+          <a href="#benefits" className="btn btn-soft" style={{ padding: '18px 48px', fontSize: '16px' }}>Learn More</a>
         </div>
       </section>
 
       <section id="benefits" className="section" style={{ padding: '80px 0' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '56px', fontSize: '36px' }}>Why Partner with Us?</h2>
-        <div className="grid grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '32px' }}>
-          <div className="card" style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '40px', marginBottom: '24px' }}>✨</div>
+        <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+          <h2 style={{ fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', marginBottom: '16px' }}>Why Partner with Us?</h2>
+          <p style={{ color: 'var(--muted)', fontSize: '16px' }}>Everything you need to run a successful conscious kitchen.</p>
+        </div>
+        
+        <div className="grid grid-3">
+          <div className="card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ width: '64px', height: '64px', background: 'var(--verified-bg)', color: 'var(--verified)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <ShieldCheck size={32} />
+            </div>
             <h3 style={{ marginBottom: '16px', fontSize: '22px' }}>Purity Verification</h3>
             <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: '1.6' }}>Get a verified badge that builds instant trust with spiritual seekers and health-conscious diners.</p>
           </div>
-          <div className="card" style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '40px', marginBottom: '24px' }}>📊</div>
+          
+          <div className="card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ width: '64px', height: '64px', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <BarChart3 size={32} />
+            </div>
             <h3 style={{ marginBottom: '16px', fontSize: '22px' }}>Manage Subscriptions</h3>
             <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: '1.6' }}>Offer daily meal packs and manage recurring revenue easily with our automated subscription tools.</p>
           </div>
-          <div className="card" style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '40px', marginBottom: '24px' }}>📱</div>
+          
+          <div className="card" style={{ textAlign: 'center', padding: '48px 32px' }}>
+            <div style={{ width: '64px', height: '64px', background: 'var(--highlight)', color: 'var(--text-strong)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+              <Zap size={32} />
+            </div>
             <h3 style={{ marginBottom: '16px', fontSize: '22px' }}>Smart Operations</h3>
             <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: '1.6' }}>Digital menu, QR check-ins, and delivery management all in one calm, distraction-free dashboard.</p>
           </div>
         </div>
       </section>
 
-      <section id="login-section" className="section" style={{ background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)', padding: '80px 40px', textAlign: 'center', marginBottom: '80px' }}>
-        <h3 style={{ marginBottom: '16px', fontSize: '28px' }}>Partner Dashboard</h3>
-        <p style={{ marginBottom: '40px', color: 'var(--muted)', fontSize: '16px' }}>
-          {view === 'login' ? 'Access your dashboard to manage your restaurant operations.' : 'Recover your account access.'}
-        </p>
-        
-        {view === 'login' && <LoginCard onLogin={onLogin} setView={setView} />}
-        {view === 'forgot' && <ForgotPasswordCard setView={setView} />}
-        {view === 'reset' && <ResetPasswordCard setView={setView} />}
-
-        <div style={{ marginTop: '40px', padding: '24px', borderTop: '1px solid var(--border)', maxWidth: '500px', margin: '40px auto 0' }}>
-          <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-            Want to join as a restaurant partner? <br />
-            Please contact our administration to get your restaurant verified and account created.
+      <section id="login-section" className="section" style={{ background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '80px 20px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto 48px' }}>
+          <h3 style={{ fontSize: 'clamp(1.5rem, 3vw, 2rem)', marginBottom: '16px' }}>Partner Dashboard</h3>
+          <p style={{ color: 'var(--muted)', fontSize: '16px' }}>
+            {view === 'login' ? 'Access your dashboard to manage your restaurant operations and track growth.' : 'Recover your account access to get back to your dashboard.'}
           </p>
+        </div>
+        
+        <div className="fade-in">
+          {view === 'login' && <LoginCard onLogin={onLogin} setView={setView} />}
+          {view === 'forgot' && <ForgotPasswordCard setView={setView} />}
+          {view === 'reset' && <ResetPasswordCard setView={setView} />}
+        </div>
+
+        <div style={{ marginTop: '64px', padding: '32px', background: 'var(--bg-subtle)', borderRadius: 'var(--radius-lg)', maxWidth: '500px', margin: '64px auto 0', display: 'flex', gap: '16px', alignItems: 'flex-start', textAlign: 'left' }}>
+          <CheckCircle2 size={24} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+          <div>
+            <h4 style={{ fontSize: '16px', marginBottom: '8px' }}>Want to join as a restaurant partner?</h4>
+            <p style={{ color: 'var(--muted)', fontSize: '14px', lineHeight: 1.5 }}>
+              Please contact our administration to get your restaurant verified and account created. We personally vet every partner to maintain our purity standards.
+            </p>
+          </div>
         </div>
       </section>
     </div>

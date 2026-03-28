@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { 
+  Users, 
+  Truck, 
+  CreditCard, 
+  Activity,
+  Lightbulb
+} from 'lucide-react'
+
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 function UsageMonitor({ partnerId }) {
@@ -23,17 +31,20 @@ function UsageMonitor({ partnerId }) {
 
   return (
     <div className="card">
-      <h3 style={{ marginBottom: '20px' }}>Recent Activity</h3>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+        <Activity size={20} className="text-accent" />
+        <h3 style={{ margin: 0 }}>Recent Activity</h3>
+      </div>
       {loading ? <p>Loading activity...</p> : (
-        <ul className="partner-list">
+        <ul className="partner-list" style={{ listStyle: 'none', padding: 0 }}>
           {logs.length === 0 && <li className="empty-state">No activity yet</li>}
           {logs.map((log) => (
-            <li key={log._id || log.id} className="partner-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+            <li key={log._id || log.id} className="partner-item" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
               <div>
                 <span className={`badge ${log.type === 'meal_redeem' ? 'badge-verified' : ''}`} style={{ marginRight: '10px', fontSize: '11px' }}>
                   {log.type === 'meal_redeem' ? 'Meal Redeemed' : 'Check-in'}
                 </span>
-                <span style={{ fontSize: '14px' }}>User: {log.userId}</span>
+                <span style={{ fontSize: '14px', fontWeight: 500 }}>User: {log.userId}</span>
               </div>
               <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
                 {new Date(log.timestamp).toLocaleTimeString()}
@@ -54,34 +65,61 @@ export default function DashboardPage({ partnerId }) {
 
   return (
     <div className="view-content">
-      <div className="view-header" style={{ marginBottom: '32px' }}>
+      <div className="view-header" style={{ marginBottom: '40px' }}>
         <h2 className="view-title">Dashboard Overview</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '14px' }}>Welcome back! Here's what's happening today.</p>
+        <p style={{ color: 'var(--muted)', fontSize: '15px', marginTop: '4px' }}>Welcome back! Here's what's happening today.</p>
       </div>
       
-      <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-        <div className="stat-card" style={{ padding: '24px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-          <div className="stat-value" style={{ fontSize: '32px', fontWeight: 'bold', color: 'var(--accent)' }}>{stats.subsCount}</div>
-          <div className="stat-label" style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginTop: '8px' }}>Active Subscriptions</div>
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div className="stat-value">{stats.subsCount}</div>
+              <div className="stat-label">Active Subscriptions</div>
+            </div>
+            <div style={{ padding: '12px', background: 'var(--accent-soft)', borderRadius: '12px', color: 'var(--accent)' }}>
+              <Users size={24} />
+            </div>
+          </div>
         </div>
-        <div className="stat-card" style={{ padding: '24px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-          <div className="stat-value" style={{ fontSize: '32px', fontWeight: 'bold' }}>{stats.deliveriesCount}</div>
-          <div className="stat-label" style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginTop: '8px' }}>Total Deliveries</div>
+        
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div className="stat-value">{stats.deliveriesCount}</div>
+              <div className="stat-label">Total Deliveries</div>
+            </div>
+            <div style={{ padding: '12px', background: 'var(--highlight)', borderRadius: '12px', color: 'var(--muted)' }}>
+              <Truck size={24} />
+            </div>
+          </div>
         </div>
-        <div className="stat-card" style={{ padding: '24px', background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', textAlign: 'center' }}>
-          <div className="stat-value" style={{ fontSize: '32px', fontWeight: 'bold' }}>{stats.activePlans}</div>
-          <div className="stat-label" style={{ fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1px', color: 'var(--muted)', marginTop: '8px' }}>Membership Plans</div>
+
+        <div className="stat-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div className="stat-value">{stats.activePlans}</div>
+              <div className="stat-label">Active Plans</div>
+            </div>
+            <div style={{ padding: '12px', background: 'var(--verified-bg)', borderRadius: '12px', color: 'var(--verified)' }}>
+              <CreditCard size={24} />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+      <div className="grid grid-2">
         <UsageMonitor partnerId={partnerId} />
-        <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '16px' }}>Quick Tips</h3>
-          <ul style={{ fontSize: '14px', color: 'var(--muted)', paddingLeft: '20px', lineHeight: '2' }}>
-            <li>Keep your menu updated to attract more users.</li>
-            <li>Respond to delivery reminders promptly.</li>
-            <li>Use On-Table QR for a better dining experience.</li>
+        
+        <div className="card" style={{ height: 'fit-content' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <Lightbulb size={20} style={{ color: '#EAB308' }} />
+            <h3 style={{ margin: 0 }}>Quick Tips</h3>
+          </div>
+          <ul style={{ fontSize: '14px', color: 'var(--muted)', paddingLeft: '20px', lineHeight: '1.8' }}>
+            <li style={{ marginBottom: '8px' }}>Keep your menu updated to attract more users.</li>
+            <li style={{ marginBottom: '8px' }}>Respond to delivery reminders promptly.</li>
+            <li style={{ marginBottom: '8px' }}>Use On-Table QR for a better dining experience.</li>
             <li>Check bookings daily for new reservations.</li>
           </ul>
         </div>

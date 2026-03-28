@@ -24,10 +24,7 @@ function Header({ authed, onLogout, setTab, activeTab }) {
       <div className="header-inner">
         <div className="header-brand">
           <img src="/logo.png" alt="SatvicTaste" className="header-logo" />
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span className="header-title">admin.satvictaste</span>
-            <span style={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent)', background: 'var(--accent-soft)', padding: '2px 6px', borderRadius: '4px' }}>Premium</span>
-          </div>
+          <span className="header-title">admin.satvictaste</span>
         </div>
         <nav className="nav">
           <span className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</span>
