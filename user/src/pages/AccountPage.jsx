@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button.jsx'
-import { Clock, ShoppingBag, MapPin, CheckCircle2 } from 'lucide-react'
+import { Input as UiInput } from '../components/ui/input.jsx'
+import { Clock, ShoppingBag, MapPin, CheckCircle2, User, Phone, Map, Calendar, ChevronRight } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
 export default function AccountPage() {
+  const [user, setUser] = useState(null)
   const [subs, setSubs] = useState([])
   const [bookings, setBookings] = useState([])
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
+  const [updating, setUpdating] = useState(false)
+  const [msg, setMsg] = useState('')
   const navigate = useNavigate()
 
   const loadData = async () => {
@@ -19,14 +24,20 @@ export default function AccountPage() {
       return
     }
     try {
-      const [sRes, bRes, oRes] = await Promise.all([
+      const [uRes, sRes, bRes, oRes] = await Promise.all([
+        fetch(`${API_BASE}/api/auth/me`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }),
         fetch(`${API_BASE}/api/users/${userId}/subscriptions`),
         fetch(`${API_BASE}/api/users/${userId}/bookings`),
         fetch(`${API_BASE}/api/users/${userId}/orders`)
       ])
+      const uData = await uRes.json()
       const sData = await sRes.json()
       const bData = await bRes.json()
       const oData = await oRes.json()
+      
+      setUser(uData)
       setSubs(Array.isArray(sData) ? sData : [])
       setBookings(Array.isArray(bData) ? bData : [])
       setOrders(Array.isArray(oData) ? oData : [])
@@ -35,6 +46,31 @@ export default function AccountPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault()
+    setUpdating(true)
+    try {
+      const res = await fetch(`${API_BASE}/api/users/${user.id || user._id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          phone: user.phone,
+          city: user.city,
+          address: user.address,
+          name: user.name
+        })
+      })
+      if (res.ok) {
+        setMsg('Profile updated!')
+        setTimeout(() => setMsg(''), 3000)
+      }
+    } catch (e) { console.error(e) }
+    finally { setUpdating(false) }
   }
 
   useEffect(() => {

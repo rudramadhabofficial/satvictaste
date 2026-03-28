@@ -120,6 +120,8 @@ const deliverySchema = new mongoose.Schema({
 
 const restaurantSchema = new mongoose.Schema({
   name: String,
+  email: { type: String, unique: true }, // Added for independent login
+  passwordHash: String, // Added for independent login
   address: String,
   city: String,
   area: String,
@@ -139,8 +141,9 @@ const restaurantSchema = new mongoose.Schema({
   }],
   story: String,
   bestTimeToVisit: String,
-  ownerId: { type: String }, // User ID of the partner
   assignedDeliveryPartners: { type: [String], default: [] }, // Array of DP IDs
+  ownerId: String, // Deprecated: keeping for backward compatibility
+  createdAt: { type: Date, default: Date.now },
 });
 
 const partnerSubmissionSchema = new mongoose.Schema({
@@ -155,8 +158,11 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   passwordHash: { type: String, required: true },
+  phone: { type: String }, // Added for user info
+  city: { type: String }, // Added for user info
+  address: { type: String }, // Added for user info
   verified: { type: Boolean, default: false },
-  partnerId: { type: String }, // Optional: Link to a restaurant if they are a partner
+  role: { type: String, enum: ['user', 'admin'], default: 'user' }, // Restricted to customer/admin
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -629,10 +635,15 @@ app.post('/api/auth/login', async (req, res) => {
       u = inMemoryUsers.find((x) => x.email.toLowerCase() === String(email).toLowerCase());
     }
 
-    if (!u) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!u) {
+      // Check if it's a partner trying to login via user route (fallback for convenience or error prevention)
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
     if (u.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Invalid credentials' });
     
     if (!u.verified) {
+      // ... verification logic ...
       const token = String(Math.floor(1000 + Math.random() * 9000));
       if (mongoose.connection.readyState === 1 && MONGO_URI) {
         await Verification.findOneAndDelete({ email: u.email });
@@ -657,16 +668,62 @@ app.post('/api/auth/login', async (req, res) => {
       maybeSendEmail(u.email, 'SatvicTaste verification code', `Your verification code is ${token}`, html);
       return res.status(403).json({ error: 'Email not verified' });
     }
+
     const id = u._id ? String(u._id) : u.id;
     res.json({ 
-      token: signJwt({ sub: id, email: u.email, role: 'user' }), 
+      token: signJwt({ sub: id, email: u.email, role: u.role || 'user' }), 
       id, 
       email: u.email, 
       name: u.name,
-      partnerId: u.partnerId || null
+      role: u.role || 'user'
     });
   } catch (e) {
     console.error('Login error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Partner Login (Independent from User collection)
+app.post('/api/partner/login', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    let r;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      r = await Restaurant.findOne({ email: email.toLowerCase() });
+    } else {
+      r = sampleData.find((x) => x.email?.toLowerCase() === String(email).toLowerCase());
+    }
+
+    if (!r) return res.status(401).json({ error: 'Invalid credentials' });
+    if (r.passwordHash !== hashPassword(password)) return res.status(401).json({ error: 'Invalid credentials' });
+    
+    const id = r._id ? String(r._id) : r.id;
+    res.json({ 
+      token: signJwt({ sub: id, email: r.email, role: 'partner' }), 
+      id, 
+      email: r.email, 
+      name: r.name,
+      partnerId: id
+    });
+  } catch (e) {
+    console.error('Partner login error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Partner Profile/Auth check
+app.get('/api/partner/me', partnerAuth, async (req, res) => {
+  try {
+    let r;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      r = await Restaurant.findById(req.user.sub).lean();
+    } else {
+      r = sampleData.find((x) => x._id === req.user.sub);
+    }
+    if (!r) return res.status(404).json({ error: 'Restaurant not found' });
+    const id = r._id ? String(r._id) : r.id;
+    res.json({ id, email: r.email, name: r.name, verified: r.verified });
+  } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -681,7 +738,7 @@ app.get('/api/auth/me', userAuth, async (req, res) => {
     }
     if (!u) return res.status(404).json({ error: 'Not found' });
     const id = u._id ? String(u._id) : u.id;
-    res.json({ id, email: u.email, name: u.name, verified: u.verified, partnerId: u.partnerId || null });
+    res.json({ id, email: u.email, name: u.name, verified: u.verified, phone: u.phone, city: u.city, address: u.address, role: u.role });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -749,6 +806,7 @@ app.post('/api/delivery-auth/signup', async (req, res) => {
 });
 
 // Admin: Create Delivery Partner
+// DEPRECATED: use /api/admin/delivery-partners/create instead
 app.post('/api/admin/delivery-partners', adminAuth, async (req, res) => {
   try {
     const { email, name, password, phone, city } = req.body || {};
@@ -819,7 +877,7 @@ app.get('/api/delivery-auth/me', deliveryPartnerAuth, async (req, res) => {
     }
     if (!dp) return res.status(404).json({ error: 'Not found' });
     const id = dp._id ? String(dp._id) : dp.id;
-    res.json({ id, email: dp.email, name: dp.name, status: dp.status });
+    res.json({ id, email: dp.email, name: dp.name, status: dp.status, phone: dp.phone, city: dp.city });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -1041,6 +1099,7 @@ app.post('/api/admin/restaurants/:id/verify', adminAuth, async (req, res) => {
   }
 });
 
+// Admin: Create Restaurant Partner (Directly in Restaurant collection)
 app.post('/api/admin/partners/create', adminAuth, async (req, res) => {
   try {
     const { email, name, password } = req.body || {};
@@ -1049,56 +1108,91 @@ app.post('/api/admin/partners/create', adminAuth, async (req, res) => {
     const emailLower = email.toLowerCase();
     
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
-      const existing = await User.findOne({ email: emailLower });
-      if (existing) return res.status(400).json({ error: 'Email already exists' });
+      const existing = await Restaurant.findOne({ email: emailLower });
+      if (existing) return res.status(400).json({ error: 'Email already exists for a restaurant' });
       
-      const user = await User.create({
+      const existingUser = await User.findOne({ email: emailLower });
+      if (existingUser) return res.status(400).json({ error: 'Email already exists in User collection' });
+
+      const restaurant = await Restaurant.create({
         name,
         email: emailLower,
         passwordHash: hashPassword(password),
-        verified: true
-      });
-      
-      const restaurant = await Restaurant.create({
-        name,
-        ownerId: String(user._id),
         verified: false // Must complete KYC
       });
       
-      user.partnerId = String(restaurant._id);
-      await user.save();
-      
-      return res.status(201).json({ success: true, partnerId: user.partnerId });
+      return res.status(201).json({ success: true, partnerId: String(restaurant._id) });
     }
     
     // In-memory fallback
-    if (inMemoryUsers.find(u => u.email.toLowerCase() === emailLower)) {
+    if (sampleData.find(r => r.email?.toLowerCase() === emailLower)) {
       return res.status(400).json({ error: 'Email already exists' });
     }
     
-    const userId = String(Date.now());
-    const restaurantId = 'r' + userId;
-    
-    const user = { 
-      id: userId, 
-      name, 
-      email: emailLower, 
-      passwordHash: hashPassword(password), 
-      verified: true, 
-      partnerId: restaurantId 
-    };
-    
+    const restaurantId = 'r' + Date.now();
     const restaurant = {
       _id: restaurantId,
       name,
-      ownerId: userId,
-      verified: false
+      email: emailLower,
+      passwordHash: hashPassword(password),
+      verified: false,
+      assignedDeliveryPartners: []
     };
     
-    inMemoryUsers.push(user);
     sampleData.push(restaurant);
-    
     res.status(201).json({ success: true, partnerId: restaurantId });
+  } catch (e) {
+    console.error("Partner creation error:", e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin: Create Delivery Partner (Directly in DeliveryPartner collection)
+app.post('/api/admin/delivery-partners/create', adminAuth, async (req, res) => {
+  try {
+    const { email, name, password, phone, city } = req.body || {};
+    if (!email || !password || !name) return res.status(400).json({ error: 'All fields required' });
+    
+    const emailLower = email.toLowerCase();
+    
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const existing = await DeliveryPartner.findOne({ email: emailLower });
+      if (existing) return res.status(400).json({ error: 'Email already exists' });
+      
+      const existingUser = await User.findOne({ email: emailLower });
+      if (existingUser) return res.status(400).json({ error: 'Email already exists in User collection' });
+
+      const dp = await DeliveryPartner.create({
+        name,
+        email: emailLower,
+        passwordHash: hashPassword(password),
+        phone,
+        city,
+        verified: true // Admin created partners are pre-verified
+      });
+      
+      return res.status(201).json({ success: true, id: dp._id });
+    }
+    
+    // In-memory fallback
+    if (inMemoryDeliveryPartners.find(u => u.email.toLowerCase() === emailLower)) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    
+    const id = String(Date.now());
+    const dp = { 
+      id, 
+      name, 
+      email: emailLower, 
+      passwordHash: hashPassword(password), 
+      phone,
+      city,
+      verified: true,
+      assignedRestaurants: []
+    };
+    
+    inMemoryDeliveryPartners.push(dp);
+    res.status(201).json({ success: true, id });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -1149,8 +1243,7 @@ app.get('/api/admin/stats', adminAuth, async (req, res) => {
       stats.partners = await PartnerSubmission.countDocuments({});
       stats.deliveryPartners = await DeliveryPartner.countDocuments({});
       stats.deliveries = await Delivery.countDocuments({});
-      // stats.users = await User.countDocuments({}); // No User model yet, using inMemoryUsers
-      stats.users = inMemoryUsers.length;
+      stats.users = await User.countDocuments({ role: 'user' });
     } else {
       stats.restaurants = sampleData.length;
       stats.partners = inMemorySubmissions.length;
