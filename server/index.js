@@ -610,7 +610,13 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ error: 'Email not verified' });
     }
     const id = u._id ? String(u._id) : u.id;
-    res.json({ token: signJwt({ sub: id, email: u.email, role: 'user' }), id, email: u.email, name: u.name });
+    res.json({ 
+      token: signJwt({ sub: id, email: u.email, role: 'user' }), 
+      id, 
+      email: u.email, 
+      name: u.name,
+      partnerId: u.partnerId || null
+    });
   } catch (e) {
     console.error('Login error:', e);
     res.status(500).json({ error: 'Server error' });
@@ -786,6 +792,69 @@ app.post('/api/admin/login', (req, res) => {
       return res.json(list.map(dp => ({ ...dp, id: String(dp._id) })));
     }
     res.json(inMemoryDeliveryPartners);
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/partners/create', adminAuth, async (req, res) => {
+  try {
+    const { email, name, password } = req.body || {};
+    if (!email || !password || !name) return res.status(400).json({ error: 'All fields required' });
+    
+    const emailLower = email.toLowerCase();
+    
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const existing = await User.findOne({ email: emailLower });
+      if (existing) return res.status(400).json({ error: 'Email already exists' });
+      
+      const user = await User.create({
+        name,
+        email: emailLower,
+        passwordHash: hashPassword(password),
+        verified: true
+      });
+      
+      const restaurant = await Restaurant.create({
+        name,
+        ownerId: String(user._id),
+        verified: false // Must complete KYC
+      });
+      
+      user.partnerId = String(restaurant._id);
+      await user.save();
+      
+      return res.status(201).json({ success: true, partnerId: user.partnerId });
+    }
+    
+    // In-memory fallback
+    if (inMemoryUsers.find(u => u.email.toLowerCase() === emailLower)) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    
+    const userId = String(Date.now());
+    const restaurantId = 'r' + userId;
+    
+    const user = { 
+      id: userId, 
+      name, 
+      email: emailLower, 
+      passwordHash: hashPassword(password), 
+      verified: true, 
+      partnerId: restaurantId 
+    };
+    
+    const restaurant = {
+      _id: restaurantId,
+      name,
+      ownerId: userId,
+      verified: false
+    };
+    
+    inMemoryUsers.push(user);
+    sampleData.push(restaurant);
+    
+    res.status(201).json({ success: true, partnerId: restaurantId });
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -1727,6 +1796,13 @@ app.put('/api/restaurants/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+    
+    // Check if this is a KYC submission
+    const isKycSubmission = updateData.phone && updateData.city && updateData.address;
+    if (isKycSubmission) {
+      updateData.verified = true; // Auto-verify for now as per user request flow
+    }
+
     if (mongoose.connection.readyState === 1 && MONGO_URI) {
       const doc = await Restaurant.findByIdAndUpdate(id, updateData, { new: true });
       if (!doc) return res.status(404).json({ error: 'Not found' });
@@ -1769,11 +1845,14 @@ app.get('/api/partners/:id/stats', async (req, res) => {
 
 app.get('/api/restaurants/:id', async (req, res) => {
   try {
-    const Model = getModel();
-    const restaurant = await Model.findById(req.params.id);
-    if (!restaurant || restaurant.verified !== true) {
-      return res.status(404).json({ error: 'Not found' });
+    const { id } = req.params;
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const restaurant = await Restaurant.findById(id).lean();
+      if (!restaurant) return res.status(404).json({ error: 'Not found' });
+      return res.json({ ...restaurant, id: String(restaurant._id) });
     }
+    const restaurant = sampleData.find((r) => r._id === id);
+    if (!restaurant) return res.status(404).json({ error: 'Not found' });
     res.json(restaurant);
   } catch (e) {
     res.status(500).json({ error: 'Server error' });

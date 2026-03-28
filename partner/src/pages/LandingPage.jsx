@@ -37,9 +37,9 @@ function LoginCard({ onLogin, setView }) {
       const data = await res.json()
       if (res.ok) {
         localStorage.setItem('partnerToken', data.token)
-        localStorage.setItem('partnerId', data.id)
+        localStorage.setItem('partnerId', data.partnerId || data.id)
         addToast('Login successful!', 'success')
-        onLogin(data.id)
+        onLogin(data.partnerId || data.id)
       } else {
         addToast(data.error || 'Login failed', 'error')
       }

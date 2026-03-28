@@ -4,7 +4,8 @@ import {
   Truck, 
   CreditCard, 
   Activity,
-  Lightbulb
+  Lightbulb,
+  ShieldCheck
 } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
@@ -59,9 +60,31 @@ function UsageMonitor({ partnerId }) {
 
 export default function DashboardPage({ partnerId }) {
   const [stats, setStats] = useState({ subsCount: 0, deliveriesCount: 0, activePlans: 0 })
+  const [restaurant, setRestaurant] = useState(null)
+  
   useEffect(() => {
     fetch(`${API_BASE}/api/partners/${partnerId}/stats`).then(r => r.json()).then(setStats)
+    fetch(`${API_BASE}/api/restaurants/${partnerId}`).then(r => r.json()).then(setRestaurant)
   }, [partnerId])
+
+  if (restaurant && !restaurant.verified) {
+    return (
+      <div className="view-content">
+        <div className="card" style={{ textAlign: 'center', padding: '60px 20px' }}>
+          <div style={{ width: '80px', height: '80px', background: 'var(--accent-soft)', color: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+            <ShieldCheck size={40} />
+          </div>
+          <h2 style={{ fontSize: '28px', marginBottom: '16px' }}>Complete your KYC</h2>
+          <p style={{ color: 'var(--muted)', maxWidth: '500px', margin: '0 auto 32px', fontSize: '16px', lineHeight: 1.6 }}>
+            Welcome to SatvicTaste! To start receiving orders and bookings, please complete your restaurant profile. Once filled, our team will verify your details.
+          </p>
+          <a href="/profile" className="btn btn-primary btn-lg" style={{ padding: '16px 40px' }}>
+            Fill KYC Details
+          </a>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="view-content">

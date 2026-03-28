@@ -13,7 +13,9 @@ import {
   MapPin,
   Phone,
   Clock,
-  IndianRupee
+   IndianRupee,
+  Plus,
+  UserPlus
 } from 'lucide-react'
 
 const API = (import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com') + '/api'
@@ -24,7 +26,7 @@ function Header({ authed, onLogout, setTab, activeTab }) {
       <div className="header-inner">
         <div className="header-brand">
           <img src="/logo.png" alt="SatvicTaste" className="header-logo" />
-          <span className="header-title">admin.satvictaste</span>
+          <span className="header-title">Admin</span>
         </div>
         <nav className="nav">
           <span className={`nav-link ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</span>
@@ -99,6 +101,36 @@ export default function App() {
       .then((r) => r.json())
       .then(setRestaurants)
       .catch(() => setRestaurants([]))
+  }
+
+  const handleCreatePartner = async (e) => {
+    e.preventDefault()
+    const name = e.target.name.value
+    const email = e.target.email.value
+    const password = e.target.password.value
+    
+    if(!name || !email || !password) return addToast('All fields are required', 'error')
+
+    try {
+      const res = await fetch(`${API}/admin/partners/create`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ name, email, password })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        addToast('Restaurant partner created successfully!', 'success')
+        e.target.reset()
+        loadPartners()
+      } else {
+        addToast(data.error || 'Failed to create partner', 'error')
+      }
+    } catch (e) {
+      addToast('Server error', 'error')
+    }
   }
 
   const loadDeliveryPartners = () => {
@@ -290,40 +322,72 @@ export default function App() {
         )}
 
         {tab === 'restaurants' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <h2 style={{ marginBottom: '8px' }}>Verified Restaurants</h2>
-              <p style={{ color: 'var(--muted)' }}>Manage all live restaurant listings on the platform.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ marginBottom: '8px' }}>Restaurant Partners</h2>
+                <p style={{ color: 'var(--muted)' }}>Manage live listings and create new partner credentials.</p>
+              </div>
             </div>
-            
-            <div className="premium-card">
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Restaurant</th>
-                      <th>Location</th>
-                      <th>Contact</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {restaurants.length === 0 ? (
-                      <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No verified restaurants found</td></tr>
-                    ) : (
-                      restaurants.map(r => (
-                        <tr key={r._id}>
-                          <td style={{ fontWeight: '600' }}>{r.name}</td>
-                          <td>{r.city}, {r.area}</td>
-                          <td>{r.phone}</td>
-                          <td><span className="tag">{r.satvikType}</span></td>
-                          <td><span className="badge badge-active">Active</span></td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '32px' }}>
+              <div className="premium-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+                  <UserPlus size={20} className="text-accent" />
+                  <h3 style={{ fontSize: '18px' }}>Add Restaurant</h3>
+                </div>
+                <form onSubmit={handleCreatePartner} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Restaurant Name</label>
+                    <input name="name" type="text" placeholder="e.g. Satvic Sagar" required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Owner Email (User ID)</label>
+                    <input name="email" type="email" placeholder="partner@example.com" required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Temporary Password</label>
+                    <input name="password" type="text" placeholder="Set a temporary password" required />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+                    <Plus size={18} />
+                    Generate Credentials
+                  </button>
+                </form>
+              </div>
+
+              <div className="premium-card">
+                <h3 style={{ marginBottom: '24px' }}>Live Restaurants</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Restaurant</th>
+                        <th>Location</th>
+                        <th>Contact</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {restaurants.length === 0 ? (
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No verified restaurants found</td></tr>
+                      ) : (
+                        restaurants.map(r => (
+                          <tr key={r._id}>
+                            <td style={{ fontWeight: '600' }}>{r.name}</td>
+                            <td>{r.city || 'Pending KYC'}</td>
+                            <td>{r.phone || 'Pending KYC'}</td>
+                            <td>
+                              <span className={`badge ${r.verified ? 'badge-active' : 'badge-pending'}`}>
+                                {r.verified ? 'Live' : 'Pending KYC'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
