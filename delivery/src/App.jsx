@@ -419,6 +419,8 @@ function MyDeliveries() {
 
 function DashboardView({ user }) {
   const [stats, setStats] = useState({ totalDeliveries: 0, pendingDeliveries: 0 })
+  const [assignedHotels, setAssignedHotels] = useState([])
+  const [loadingHotels, setLoadingLoadingHotels] = useState(true)
 
   useEffect(() => {
     const loadStats = async () => {
@@ -435,14 +437,30 @@ function DashboardView({ user }) {
         }
       } catch (e) {}
     }
+
+    const loadAssignedHotels = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/delivery/assigned-restaurants`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}` }
+        })
+        const data = await res.json()
+        setAssignedHotels(Array.isArray(data) ? data : [])
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoadingLoadingHotels(false)
+      }
+    }
+
     loadStats()
+    loadAssignedHotels()
   }, [])
 
   return (
     <div className="view-content">
       <div className="view-header" style={{ marginBottom: '40px' }}>
         <h2 className="view-title">Welcome back, {user.name}</h2>
-        <p style={{ color: 'var(--muted)', marginTop: '4px' }}>Here's your delivery summary for today.</p>
+        <p style={{ color: 'var(--muted)', marginTop: '4px' }}>Here's your delivery summary and assigned hotels.</p>
       </div>
       
       <div className="stats-grid">
@@ -473,8 +491,8 @@ function DashboardView({ user }) {
         <div className="stat-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div className="stat-value">{user.city || 'Active'}</div>
-              <div className="stat-label">Service Area</div>
+              <div className="stat-value">{assignedHotels.length}</div>
+              <div className="stat-label">Assigned Hotels</div>
             </div>
             <div style={{ padding: '12px', background: 'var(--highlight)', color: 'var(--text-strong)', borderRadius: '12px' }}>
               <MapPin size={24} />
@@ -483,14 +501,49 @@ function DashboardView({ user }) {
         </div>
       </div>
 
-      <div className="card" style={{ padding: '32px' }}>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <div style={{ width: '64px', height: '64px', background: 'var(--accent-soft)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
-            <Navigation size={32} />
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
+        <div className="card">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+            <MapPin size={20} className="text-accent" />
+            <h3 style={{ margin: 0 }}>My Assigned Hotels</h3>
           </div>
-          <div>
-            <h3 style={{ fontSize: '20px', marginBottom: '8px' }}>Ready for more deliveries?</h3>
-            <p style={{ color: 'var(--muted)', fontSize: '15px', lineHeight: 1.6 }}>Check the "Available Orders" tab to find new delivery requests in your area. Keep your status active to ensure you don't miss any opportunities.</p>
+          {loadingHotels ? <p>Loading assigned hotels...</p> : (
+            <div className="table-wrap">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '12px 0' }}>Hotel Name</th>
+                    <th>Location</th>
+                    <th>Contact</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assignedHotels.length === 0 ? (
+                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '32px', color: 'var(--muted)' }}>No hotels assigned to you yet.</td></tr>
+                  ) : (
+                    assignedHotels.map(h => (
+                      <tr key={h.id || h._id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '16px 0', fontWeight: '600' }}>{h.name}</td>
+                        <td style={{ color: 'var(--muted)', fontSize: '14px' }}>{h.area}, {h.city}</td>
+                        <td style={{ fontSize: '14px' }}>{h.phone}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="card" style={{ height: 'fit-content' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', background: 'var(--accent-soft)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', flexShrink: 0 }}>
+              <Navigation size={24} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '18px', marginBottom: '4px' }}>Status: Active</h3>
+              <p style={{ color: 'var(--muted)', fontSize: '13px', lineHeight: 1.4 }}>You will receive orders from your assigned hotels above.</p>
+            </div>
           </div>
         </div>
       </div>

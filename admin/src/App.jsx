@@ -15,7 +15,8 @@ import {
   Clock,
    IndianRupee,
   Plus,
-  UserPlus
+  UserPlus,
+  X
 } from 'lucide-react'
 
 const API = (import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com') + '/api'
@@ -191,6 +192,36 @@ export default function App() {
     }
   }
 
+  const handleCreateDP = async (e) => {
+    e.preventDefault()
+    const name = e.target.name.value
+    const email = e.target.email.value
+    const password = e.target.password.value
+    
+    if(!name || !email || !password) return addToast('All fields are required', 'error')
+
+    try {
+      const res = await fetch(`${API}/admin/delivery-partners/create`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        },
+        body: JSON.stringify({ name, email, password })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        addToast('Delivery partner created successfully!', 'success')
+        e.target.reset()
+        loadDeliveryPartners()
+      } else {
+        addToast(data.error || 'Failed to create partner', 'error')
+      }
+    } catch (e) {
+      addToast('Server error', 'error')
+    }
+  }
+
   const handleVerifyDP = async (id) => {
     try {
       const token = localStorage.getItem('adminToken') || ''
@@ -215,6 +246,44 @@ export default function App() {
       })
       if (!res.ok) throw new Error('Verification failed')
       addToast('Restaurant verified and live!', 'success')
+      loadRestaurants()
+    } catch (e) {
+      addToast(e.message, 'error')
+    }
+  }
+
+  const handleUnassignDP = async (restaurantId, dpId) => {
+    try {
+      const token = localStorage.getItem('adminToken') || ''
+      const res = await fetch(`${API}/admin/restaurants/${restaurantId}/unassign-dp`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ dpId })
+      })
+      if (!res.ok) throw new Error('Unassignment failed')
+      addToast('Delivery partner unassigned', 'success')
+      loadRestaurants()
+    } catch (e) {
+      addToast(e.message, 'error')
+    }
+  }
+
+  const handleAssignDPToRestaurant = async (restaurantId, dpId) => {
+    try {
+      const token = localStorage.getItem('adminToken') || ''
+      const res = await fetch(`${API}/admin/restaurants/${restaurantId}/assign-dp`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ dpId })
+      })
+      if (!res.ok) throw new Error('Assignment failed')
+      addToast('Delivery partner assigned to restaurant!', 'success')
       loadRestaurants()
     } catch (e) {
       addToast(e.message, 'error')
@@ -283,21 +352,21 @@ export default function App() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
               <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <div style={{ padding: '12px', background: 'var(--accent-soft)', borderRadius: '12px', color: 'var(--accent)' }}>
-                  <LayoutDashboard size={24} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{restaurants.length}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Restaurants</div>
-                </div>
-              </div>
-              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                 <div style={{ padding: '12px', background: '#fffbeb', borderRadius: '12px', color: '#b45309' }}>
                   <ShoppingBag size={24} />
                 </div>
                 <div>
                   <div style={{ fontSize: '24px', fontWeight: '700' }}>{orders.length}</div>
                   <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Total Orders</div>
+                </div>
+              </div>
+              <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '12px', background: 'var(--accent-soft)', borderRadius: '12px', color: 'var(--accent)' }}>
+                  <LayoutDashboard size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '24px', fontWeight: '700' }}>{restaurants.length}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--muted)', fontWeight: '500' }}>Restaurants</div>
                 </div>
               </div>
               <div className="premium-card" style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -321,55 +390,129 @@ export default function App() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
-              <div className="premium-card">
-                <h3 style={{ marginBottom: '20px' }}>Verified Restaurants</h3>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Restaurant</th>
-                        <th>Location</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {restaurants.length === 0 ? (
-                        <tr><td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No restaurants found</td></tr>
-                      ) : (
-                        restaurants.map(r => (
-                          <tr key={r._id || r.id}>
-                            <td style={{ fontWeight: '600' }}>{r.name}</td>
-                            <td>{r.city || 'Pending KYC'}</td>
-                            <td>
-                              <span className={`badge ${r.verified ? 'badge-active' : 'badge-pending'}`}>
-                                {r.verified ? 'Live' : 'Pending KYC'}
-                              </span>
-                            </td>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                {/* Priority 1: Orders waiting for assignment */}
+                {orders.filter(o => o.status === 'READY').length > 0 && (
+                  <div className="premium-card" style={{ borderLeft: '4px solid #f59e0b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3 style={{ margin: 0, color: '#b45309' }}>Orders Awaiting Assignment</h3>
+                      <span className="badge badge-warning">{orders.filter(o => o.status === 'READY').length} Ready</span>
+                    </div>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Order</th>
+                            <th>Restaurant</th>
+                            <th>Amount</th>
+                            <th>Assign Partner</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {orders.filter(o => o.status === 'READY').map(o => (
+                            <tr key={o.id}>
+                              <td style={{ fontWeight: '600' }}>#{o.id.slice(-6).toUpperCase()}</td>
+                              <td>{o.restaurantId}</td>
+                              <td>₹{o.totalPrice}</td>
+                              <td>
+                                <select 
+                                  className="btn btn-primary btn-sm"
+                                  onChange={(e) => handleAssignDP(o.id, e.target.value)}
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>Choose Partner</option>
+                                  {deliveryPartners.filter(dp => dp.verified).map(dp => (
+                                    <option key={dp.id || dp._id} value={dp.id || dp._id}>{dp.name}</option>
+                                  ))}
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Priority 2: Restaurant-DP Mapping */}
+                <div className="premium-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h3 style={{ margin: 0 }}>Restaurant & Delivery Mapping</h3>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>Manage fixed fleets for hotels</p>
+                  </div>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Restaurant</th>
+                          <th>Assigned Delivery Partners</th>
+                          <th>Add DP</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {restaurants.length === 0 ? (
+                          <tr><td colSpan="3" style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)' }}>No restaurants found</td></tr>
+                        ) : (
+                          restaurants.map(r => (
+                            <tr key={r._id || r.id}>
+                              <td style={{ fontWeight: '600' }}>{r.name}</td>
+                              <td>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                  {(r.assignedDeliveryPartners || []).length === 0 ? (
+                                    <span style={{ fontSize: '12px', color: 'var(--muted)' }}>None</span>
+                                  ) : (
+                                    r.assignedDeliveryPartners.map(dpId => {
+                                      const dp = deliveryPartners.find(x => x.id === dpId || x._id === dpId);
+                                      return (
+                                        <span key={dpId} className="badge badge-info" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                          {dp ? dp.name : 'Unknown DP'}
+                                          <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleUnassignDP(r._id || r.id, dpId)} />
+                                        </span>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <select 
+                                  className="btn btn-soft btn-sm"
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleAssignDPToRestaurant(r._id || r.id, e.target.value)
+                                      e.target.value = ""
+                                    }
+                                  }}
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>Add</option>
+                                  {deliveryPartners.filter(dp => dp.verified && !(r.assignedDeliveryPartners || []).includes(dp.id || dp._id)).map(dp => (
+                                    <option key={dp.id || dp._id} value={dp.id || dp._id}>{dp.name}</option>
+                                  ))}
+                                </select>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-              
+
               <div className="premium-card">
                 <h3 style={{ marginBottom: '20px' }}>Active Issues</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {issues.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>No active issues</div>
-                  ) : (
-                    issues.map(i => (
-                      <div key={i.id} style={{ padding: '12px', background: 'var(--bg-subtle)', borderRadius: '8px', fontSize: '13px' }}>
-                        <div style={{ fontWeight: '600', marginBottom: '4px' }}>Delay: {i.restaurantId}</div>
-                        <div style={{ color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={12} />
-                          {new Date(i.escalatedAt).toLocaleTimeString()}
-                        </div>
+                {issues.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--muted)', padding: '20px' }}>No active issues</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {issues.map(i => (
+                      <div key={i.id} style={{ padding: '12px', border: '1px solid #fee2e2', background: '#fffafb', borderRadius: '8px' }}>
+                        <div style={{ fontWeight: '600', fontSize: '14px' }}>{i.title}</div>
+                        <p style={{ fontSize: '12px', color: '#b91c1c', margin: '4px 0' }}>{i.desc}</p>
                       </div>
-                    ))
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -578,47 +721,109 @@ export default function App() {
         )}
 
         {tab === 'delivery' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <h2 style={{ marginBottom: '8px' }}>Delivery Partners</h2>
-              <p style={{ color: 'var(--muted)' }}>Manage your delivery fleet.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 style={{ marginBottom: '8px' }}>Delivery Management</h2>
+                <p style={{ color: 'var(--muted)' }}>Manage delivery partners and their hotel assignments.</p>
+              </div>
             </div>
 
-            <div className="premium-card">
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Partner Name</th>
-                      <th>Email</th>
-                      <th>City</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deliveryPartners.length === 0 ? (
-                      <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No delivery partners found</td></tr>
-                    ) : (
-                      deliveryPartners.map(dp => (
-                        <tr key={dp.id}>
-                          <td style={{ fontWeight: '600' }}>{dp.name}</td>
-                          <td>{dp.email}</td>
-                          <td>{dp.city}</td>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span className={`badge ${dp.verified ? 'badge-active' : 'badge-pending'}`}>
-                                {dp.verified ? 'Verified' : 'Pending'}
-                              </span>
-                              {!dp.verified && (
-                                <button className="btn btn-soft btn-sm" onClick={() => handleVerifyDP(dp.id)}>Approve</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '32px' }}>
+              <div className="premium-card">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px' }}>
+                  <UserPlus size={20} className="text-accent" />
+                  <h3 style={{ fontSize: '18px' }}>Add Delivery Partner</h3>
+                </div>
+                <form onSubmit={handleCreateDP} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Full Name</label>
+                    <input name="name" type="text" placeholder="e.g. Rahul Kumar" required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Email (User ID)</label>
+                    <input name="email" type="email" placeholder="rahul@example.com" required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '13px', fontWeight: '600' }}>Temporary Password</label>
+                    <input name="password" type="text" placeholder="Set a temporary password" required />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}>
+                    <Plus size={18} />
+                    Create Account
+                  </button>
+                </form>
+              </div>
+
+              <div className="premium-card">
+                <h3 style={{ marginBottom: '24px' }}>Active Partners & Assignments</h3>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Partner</th>
+                        <th>Assigned Hotels</th>
+                        <th>Status</th>
+                        <th>Assign Hotel</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {deliveryPartners.length === 0 ? (
+                        <tr><td colSpan="4" style={{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>No delivery partners found</td></tr>
+                      ) : (
+                        deliveryPartners.map(dp => (
+                          <tr key={dp.id || dp._id}>
+                            <td style={{ fontWeight: '600' }}>{dp.name}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {(dp.assignedRestaurants || []).length === 0 ? (
+                                  <span style={{ fontSize: '12px', color: 'var(--muted)' }}>None</span>
+                                ) : (
+                                  dp.assignedRestaurants.map(rid => {
+                                    const rest = restaurants.find(x => x.id === rid || x._id === rid);
+                                    return (
+                                      <span key={rid} className="badge badge-info" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        {rest ? rest.name : 'Unknown Hotel'}
+                                        <X size={12} style={{ cursor: 'pointer' }} onClick={() => handleUnassignDP(rid, dp.id || dp._id)} />
+                                      </span>
+                                    );
+                                  })
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className={`badge ${dp.verified ? 'badge-active' : 'badge-pending'}`}>
+                                  {dp.verified ? 'Verified' : 'Pending'}
+                                </span>
+                                {!dp.verified && (
+                                  <button className="btn btn-soft btn-sm" onClick={() => handleVerifyDP(dp.id)}>Approve</button>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <select 
+                                className="btn btn-soft btn-sm"
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAssignDPToRestaurant(e.target.value, dp.id || dp._id)
+                                    e.target.value = ""
+                                  }
+                                }}
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Add Hotel</option>
+                                {restaurants.filter(r => r.verified && !(dp.assignedRestaurants || []).includes(r.id || r._id)).map(r => (
+                                  <option key={r.id || r._id} value={r.id || r._id}>{r.name}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

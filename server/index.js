@@ -101,6 +101,7 @@ const deliveryPartnerSchema = new mongoose.Schema({
   city: { type: String },
   verified: { type: Boolean, default: false },
   status: { type: String, enum: ['available', 'busy', 'offline'], default: 'offline' },
+  assignedRestaurants: { type: [String], default: [] }, // Array of Restaurant IDs
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -130,10 +131,16 @@ const restaurantSchema = new mongoose.Schema({
   verified: { type: Boolean, default: false },
   satvikType: { type: String, enum: ['Pure Satvik', 'No Onion/Garlic', 'Jain Friendly'] },
   priceRange: { type: String, enum: ['$', '$$', '$$$'] },
-  menu: [{ name: String, description: String, price: Number }],
+  menu: [{ 
+    name: String, 
+    description: String, 
+    price: Number,
+    image: String 
+  }],
   story: String,
   bestTimeToVisit: String,
   ownerId: { type: String }, // User ID of the partner
+  assignedDeliveryPartners: { type: [String], default: [] }, // Array of DP IDs
 });
 
 const partnerSubmissionSchema = new mongoose.Schema({
@@ -833,6 +840,148 @@ app.post('/api/admin/login', (req, res) => {
       return res.json(list.map(dp => ({ ...dp, id: String(dp._id) })));
     }
     res.json(inMemoryDeliveryPartners);
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/delivery-partners/create', adminAuth, async (req, res) => {
+  try {
+    const { email, name, password } = req.body || {};
+    if (!email || !password || !name) return res.status(400).json({ error: 'All fields required' });
+    
+    const emailLower = email.toLowerCase();
+    
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const existing = await DeliveryPartner.findOne({ email: emailLower });
+      if (existing) return res.status(400).json({ error: 'Email already exists' });
+      
+      const dp = await DeliveryPartner.create({
+        name,
+        email: emailLower,
+        passwordHash: hashPassword(password),
+        verified: true // Admin created partners are pre-verified
+      });
+      
+      return res.status(201).json({ success: true, id: dp._id });
+    }
+    
+    // In-memory fallback
+    if (inMemoryDeliveryPartners.find(u => u.email.toLowerCase() === emailLower)) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    
+    const id = String(Date.now());
+    const dp = { 
+      id, 
+      name, 
+      email: emailLower, 
+      passwordHash: hashPassword(password), 
+      verified: true,
+      assignedRestaurants: []
+    };
+    
+    inMemoryDeliveryPartners.push(dp);
+    res.status(201).json({ success: true, id });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/restaurants/:id/assign-dp', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dpId } = req.body;
+    if (!dpId) return res.status(400).json({ error: 'DP ID required' });
+
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const restaurant = await Restaurant.findById(id);
+      const dp = await DeliveryPartner.findById(dpId);
+      
+      if (!restaurant || !dp) return res.status(404).json({ error: 'Restaurant or DP not found' });
+
+      // Add DP to restaurant's assigned list if not already there
+      if (!restaurant.assignedDeliveryPartners.includes(dpId)) {
+        restaurant.assignedDeliveryPartners.push(dpId);
+        await restaurant.save();
+      }
+
+      // Add Restaurant to DP's assigned list if not already there
+      if (!dp.assignedRestaurants.includes(id)) {
+        dp.assignedRestaurants.push(id);
+        await dp.save();
+      }
+
+      return res.json({ success: true });
+    }
+    
+    // In-memory fallback
+    const restaurant = sampleData.find(r => r._id === id);
+    const dp = inMemoryDeliveryPartners.find(d => d.id === dpId);
+    
+    if (!restaurant || !dp) return res.status(404).json({ error: 'Not found' });
+
+    if (!restaurant.assignedDeliveryPartners) restaurant.assignedDeliveryPartners = [];
+    if (!restaurant.assignedDeliveryPartners.includes(dpId)) {
+      restaurant.assignedDeliveryPartners.push(dpId);
+    }
+
+    if (!dp.assignedRestaurants) dp.assignedRestaurants = [];
+    if (!dp.assignedRestaurants.includes(id)) {
+      dp.assignedRestaurants.push(id);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/restaurants/:id/unassign-dp', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { dpId } = req.body;
+
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      await Restaurant.findByIdAndUpdate(id, { $pull: { assignedDeliveryPartners: dpId } });
+      await DeliveryPartner.findByIdAndUpdate(dpId, { $pull: { assignedRestaurants: id } });
+      return res.json({ success: true });
+    }
+
+    const restaurant = sampleData.find(r => r._id === id);
+    const dp = inMemoryDeliveryPartners.find(d => d.id === dpId);
+
+    if (restaurant && restaurant.assignedDeliveryPartners) {
+      restaurant.assignedDeliveryPartners = restaurant.assignedDeliveryPartners.filter(x => x !== dpId);
+    }
+    if (dp && dp.assignedRestaurants) {
+      dp.assignedRestaurants = dp.assignedRestaurants.filter(x => x !== id);
+    }
+
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/delivery/assigned-restaurants', deliveryPartnerAuth, async (req, res) => {
+  try {
+    const dpId = req.user.sub;
+    let restaurants = [];
+
+    if (mongoose.connection.readyState === 1 && MONGO_URI) {
+      const dp = await DeliveryPartner.findById(dpId);
+      if (!dp) return res.status(404).json({ error: 'DP not found' });
+      
+      restaurants = await Restaurant.find({ _id: { $in: dp.assignedRestaurants } }).lean();
+      return res.json(restaurants.map(r => ({ ...r, id: String(r._id) })));
+    }
+
+    const dp = inMemoryDeliveryPartners.find(d => d.id === dpId);
+    if (!dp) return res.status(404).json({ error: 'DP not found' });
+    
+    restaurants = sampleData.filter(r => (dp.assignedRestaurants || []).includes(r._id));
+    res.json(restaurants);
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }

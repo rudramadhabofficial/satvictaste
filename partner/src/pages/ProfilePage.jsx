@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button.jsx'
 import { Input as UiInput } from '../components/ui/input.jsx'
+import { Upload, Camera } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://satvictaste.onrender.com'
 
@@ -9,6 +10,7 @@ export default function ProfilePage({ partnerId }) {
   const [profile, setProfile] = useState(null)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -17,6 +19,30 @@ export default function ProfilePage({ partnerId }) {
       setLoading(false)
     })
   }, [partnerId])
+
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
+
+    try {
+      const res = await fetch(`${API_BASE}/api/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setProfile(prev => ({ ...prev, coverImage: data.url }))
+      }
+    } catch (err) {
+      console.error("Banner upload failed", err)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleUpdate = async (e) => {
     e.preventDefault()
@@ -90,6 +116,44 @@ export default function ProfilePage({ partnerId }) {
       <div className="card" style={{ padding: '32px' }}>
         {msg && <div className={`message ${msg.includes('success') ? 'success' : 'error'}`} style={{ marginBottom: '24px' }}>{msg}</div>}
         <form onSubmit={handleUpdate}>
+          {/* Restaurant Banner Upload */}
+          <h3 style={{ marginBottom: '20px', fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Restaurant Banner</h3>
+          <div style={{ marginBottom: '32px' }}>
+            <div 
+              style={{ 
+                width: '100%', 
+                height: '240px', 
+                background: 'var(--bg-subtle)', 
+                borderRadius: '16px', 
+                border: '2px dashed var(--border)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative',
+                cursor: 'pointer'
+              }}
+              onClick={() => document.getElementById('banner-upload').click()}
+            >
+              {profile.coverImage ? (
+                <>
+                  <img src={profile.coverImage} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{ position: 'absolute', bottom: '16px', right: '16px', background: 'rgba(0,0,0,0.6)', color: 'white', padding: '8px 16px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px' }}>
+                    <Camera size={16} /> Change Banner
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Upload size={32} style={{ color: 'var(--muted)', marginBottom: '12px' }} />
+                  <span style={{ fontSize: '14px', color: 'var(--muted)' }}>{uploading ? 'Uploading banner...' : 'Upload Restaurant Banner'}</span>
+                  <span style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '4px' }}>Recommended size: 1200x400</span>
+                </>
+              )}
+              <input id="banner-upload" type="file" hidden accept="image/*" onChange={handleBannerUpload} />
+            </div>
+          </div>
+
           <h3 style={{ marginBottom: '20px', fontSize: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>Basic Details</h3>
           <div className="grid grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px', marginBottom: '32px' }}>
             <div>

@@ -491,7 +491,12 @@ export default function RestaurantDetailPage({ onAddToCart }) {
                 {activeTab === 'menu' && (
                   <div style={{ display: 'grid', gap: '32px' }}>
                     {restaurant.menu?.map((item, idx) => (
-                      <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '32px', borderBottom: '1px solid var(--bg-subtle)' }}>
+                      <div key={idx} style={{ display: 'flex', gap: '32px', paddingBottom: '32px', borderBottom: '1px solid var(--bg-subtle)', alignItems: 'center' }}>
+                        {item.image && (
+                          <div style={{ width: '120px', height: '120px', borderRadius: '16px', overflow: 'hidden', flexShrink: 0, border: '1px solid var(--border)' }}>
+                            <img src={item.image} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        )}
                         <div style={{ flex: 1 }}>
                           <h4 style={{ fontSize: '19px', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-strong)' }}>{item.name}</h4>
                           <p style={{ fontSize: '15px', color: 'var(--muted)', maxWidth: '480px', lineHeight: '1.6' }}>{item.description}</p>
